@@ -1,0 +1,92 @@
+body {
+    font-family: "Source Sans Pro", Arial, Helvetica, sans-serif;
+    overflow: hidden;
+}
+
+#playlist-entry {
+    width: 41%;
+}
+
+#submit-btn {
+    margin-top: 20px;
+}
+
+#submit-btn {
+    width: 180px;
+    height: 60px;
+}
+
+#login-btn {
+    width: 100px;
+    height: 30px;
+}
+
+
+#page-text {
+    padding: 0; 
+    position: relative;
+    text-align: center;
+}
+
+.constrain-text {
+    margin-top: 15%;
+    margin-left: auto;
+    margin-right: auto;
+    height: 600px;
+    width: 800px;
+}
+
+.fullpage-text {
+    margin: 0;
+    height: 100%;
+    width: 100%;
+}
+
+#page-text h1 {
+    font-size: 60px;
+}
+
+.hidden {
+    display: none;
+}
+
+#stats-page h1 {
+    top: 10%;
+    margin: 0 auto;
+}
+
+#stats-page ul {
+    list-style: none;
+    padding: 0;
+}
+
+#stats-page ul {
+    font-size: 24px;
+}
+
+#stats-page ul .top-genre {
+    text-transform: capitalize;
+}
+
+#stats-page li {
+    margin: 1% 0;
+}
+
+#recommendation-btn {
+    margin-top: 5%;
+}
+
+.loader {
+    border: 5px solid #f3f3f3; /* Light grey */
+    border-top: 5px solid black; /* Blue */
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    margin: 0 auto;
+    animation: spin 1.2s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}

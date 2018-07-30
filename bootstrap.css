@@ -1,0 +1,117 @@
+* {
+    box-sizing: border-box;
+}
+
+.row {
+    font-size: 0;
+    width: 100%;
+    padding: 0;
+}
+
+.row > div {
+    font-size: 16px;
+    display: inline-block;
+    vertical-align: top;
+    padding: 1% 1%;
+}
+
+.col-12 {
+    width: 100%;
+}
+
+.col-9 {
+    width: 75%;
+}
+
+.col-8 {
+    width: 66.66%;
+}
+
+.col-6 {
+    width: 50%;
+}
+
+.col-4 {
+    width: 33.33%;
+}
+
+.col-3 {
+    width: 25%;
+}
+
+.col-2 {
+    width: 16.66%;
+}
+
+.col-1 {
+    width: 8.33%;
+}
+
+.btn {
+    font-size: 15px;
+    font-weight: bold;
+    width: 200px;
+    height: 65px;
+    border-radius: 5px;
+    border: none;
+    transition-duration: 0.4s;
+    cursor: pointer;
+}
+
+.btn-info, .btn-download {
+    color: black;
+    background-color: white;
+}
+.btn-info:hover, .btn-download:hover {
+    background-color: rgb(185, 185, 185);
+}
+
+.btn-offer, .btn-lookatme {
+    color: white;
+    background-color: black;
+}
+
+.btn-offer:hover, .btn-lookatme:hover {
+    background-color: #222222;
+}
+
+.btn-lookatme {
+    width: 150px;
+}
+
+.btn-clickme {
+    color: black;
+    background-color: white;
+    width: 150px;
+}
+
+.btn-clickme:hover {
+    background-color: #dae0e5;
+}
+
+.alert {
+    background: white;
+    color: black;
+    border: 1px solid black;
+    border-radius: 5px;
+    width: 350px;
+    height: 100px;
+    position: absolute;
+    top: -500px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 0;
+    opacity: 0;
+    transition: opacity .3s;
+    padding: 10px;
+    text-align: center;
+}
+
+.alert-danger {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.show-alert {
+    opacity: 1;
+}
