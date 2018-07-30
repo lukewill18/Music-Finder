@@ -78,24 +78,51 @@ function getArtistPrevalence(tracks) {
     return prevalence; 
 }
 
-async function getGenrePrevalence(artistPrevalence) {
+async function getLastfmGenres(artist, prevalence, taglist) { // used if artist is not in spotify library
+    await $.ajax({
+        url: "http://ws.audioscrobbler.com/2.0/?method=artist.gettoptags&artist=" + artist + "&api_key=" + lastfm + "&format=json",
+        success: function(response) {
+            if(response.hasOwnProperty("error")) return;
+            taglist = response.toptags.tag;
+            for(let i = 0; i < taglist.length && i <= 5; ++i) {
+                if(prevalence[taglist[i].name] == undefined)
+                    prevalence[taglist[i].name] = 1;
+                else
+                    prevalence[taglist[i].name]++;
+            }
+        }
+    });
+}
+
+async function getGenrePrevalence(artistPrevalence, token) {
     let prevalence = {};
     let taglist;
+    let artist_name;
     for(let artist in artistPrevalence) {
-        await $.ajax({
-            url: "http://ws.audioscrobbler.com/2.0/?method=artist.gettoptags&artist=" + artist + "&api_key=" + lastfm + "&format=json",
-            success: function(response) {
-                if(response.hasOwnProperty("error")) return;
-                taglist = response.toptags.tag;
-                for(let i = 0; i < taglist.length && i <= 7; ++i) {
-                    if(prevalence[taglist[i].name] == undefined)
-                        prevalence[taglist[i].name] = 1;
-                    else
-                        prevalence[taglist[i].name]++;
+        if(artistPrevalence[artist].artist_id == null) { 
+            await getLastfmGenres(artist, prevalence, taglist);
+        }
+        else {
+            await $.ajax({
+                url: "https://api.spotify.com/v1/artists/" + artistPrevalence[artist].artist_id,
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                },
+                success: async function(response) {
+                    if(response.genres.length == 0) {
+                        await getLastfmGenres(artist, prevalence, taglist);
+                    }
+                    for(let i = 0; i < response.genres.length && i <= 5; ++i) {
+                        artist_name = response.genres[i].toLowerCase();
+                        if(prevalence[artist_name] == undefined)
+                            prevalence[artist_name] = 1;
+                        else
+                            prevalence[artist_name]++;
+                    }
                 }
-                prevalence["seen live"] = 0; //idk why this is a tag
-            }
-        });
+            });
+        }
+        prevalence["seen live"] = 0; //idk why this is a tag
     }
     return prevalence;
 }
@@ -197,7 +224,7 @@ $(document).ready(async function() {
         let tracks = await collectAllTracks(user, playlist, token);
         artistPrevalence = getArtistPrevalence(tracks);
         insertTopArtists(tracks);
-        genrePrevalence = await getGenrePrevalence(artistPrevalence);
+        genrePrevalence = await getGenrePrevalence(artistPrevalence, token);
         insertTopGenres(tracks);
     }
     
