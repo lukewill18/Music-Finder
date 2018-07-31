@@ -10,7 +10,6 @@
     </head>
     <body>
         <div class="alert alert-danger" id="alert">ALERT</div>
-
         <div id="page-text" class="constrain-text">
             <h1 id="page-header">Music Finder</h1>
             <div id="pre-login">
@@ -19,31 +18,81 @@
             </div>
 
             <form id="playlist-form" class="hidden">
-                <label for="playlist">Enter the name/URL of the Spotify playlist to analyze:</label>
-                <input type="text" id="playlist-entry" placeholder="ex: hot jams, spotify:user:username:playlist:playlist_id" required>
+                <label for="playlist">Enter the name of the Spotify playlist to analyze:</label>
+                <input type="text" id="playlist-entry" placeholder="ex: super cool playlist 5" required>
 
                 <button class="btn btn-offer" id="submit-btn">Submit</button>
             </form>
 
             <div id="stats-page" class="hidden">
+             <!--   <div id="background-container">
+                    <div class="background-box"></div>
+                    <div class="background-box"></div>
+                    <div class="background-box"></div>
+                    <div class="background-box"></div>
+                    <div class="background-box"></div>
+                    <div class="background-box"></div>
+                    <div class="background-box"></div>
+                    <div class="background-box"></div>
+                    <div class="background-box"></div>
+                    <div class="background-box"></div>
+                    <div class="background-box"></div>
+                    <div class="background-box"></div>
+                    <div class="background-box"></div>
+                    <div class="background-box"></div>
+                    <div class="background-box"></div>
+                    <div class="background-box"></div>
+                    <div class="background-box"></div>
+                    <div class="background-box"></div>
+                    <div class="background-box"></div>
+                    <div class="background-box"></div>
+                    <div class="background-box"></div>
+                    <div class="background-box"></div>
+                    <div class="background-box"></div>
+                    <div class="background-box"></div>
+                    <div class="background-box"></div>
+                    <div class="background-box"></div>
+                    <div class="background-box"></div>
+                </div>-->
                 <h1>Statistics</h1>
-                <div class="row">
-                    <div class="col-6 col-md-12">
-                        <h2>Your playlist's top genres:</h2>
-                        <ul id="top-genres">
-                            <li class="loading"><div class="loader"></div></li>
-                        </ul>
+                    <div class="row">
+                        <div class="col-6 col-md-12">
+                            <h2>Your playlist's top genres:</h2>
+                            <ul id="top-genres">
+                                <li class="loading"><div class="loader"></div></li>
+                            </ul>
+                        </div>
+                        <div class="col-6 col-md-12">
+                            <h2>Your playlist's top artists:</h2>
+                            <ul id="top-artists">
+                                <li class="loading"><div class="loader"></div>
+                                </li>
+                            </ul>
+                        </div>
                     </div>
-                    <div class="col-6 col-md-12">
-                        <h2>Your playlist's top artists:</h2>
-                        <ul id="top-artists">
-                            <li class="loading"><div class="loader"></div>
-                            </li>
+                <button class="btn btn-offer" id="recommendation-btn">Show Recommendations</button>
+            </div>
+
+            <div id="recommendation-page" class="hidden">
+                <h1>Recommendations</h1>
+                <div class="row">
+                    <div class="col-12">
+                        <h2>You should check out these artists:</h2>
+                        
+                        <ul id="artist-recs">
+                            <div class="loader"></div>
                         </ul>
                     </div>
                 </div>
-                <button class="btn btn-offer" id="recommendation-btn">Show Recommendations</button>
+                <div class="row">
+                    <div class="col-12">
+                            <h2>You should check out these genres:</h2>
+                    
+                    </div>
+                </div>
+                
             </div>
+
         </div>
         
         <script src="https://cdn.zingchart.com/zingchart.min.js"></script>

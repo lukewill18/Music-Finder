@@ -1,26 +1,23 @@
+
+
 body {
     font-family: "Source Sans Pro", Arial, Helvetica, sans-serif;
     overflow: hidden;
+    margin: 0;
 }
 
 #playlist-entry {
-    width: 41%;
+    width: 20%;
 }
 
 #submit-btn {
     margin-top: 20px;
 }
 
-#submit-btn {
-    width: 180px;
-    height: 60px;
-}
-
-#login-btn {
+#submit-btn, #login-btn {
     width: 100px;
     height: 30px;
 }
-
 
 #page-text {
     padding: 0; 
@@ -50,12 +47,12 @@ body {
     display: none;
 }
 
-#stats-page h1 {
+#stats-page h1, #recommendation-page h1 {
     top: 10%;
     margin: 0 auto;
 }
 
-#stats-page ul {
+#stats-page ul, #recommendation-page ul {
     list-style: none;
     padding: 0;
 }
@@ -68,7 +65,7 @@ body {
     text-transform: capitalize;
 }
 
-#stats-page li {
+#stats-page li, #recommendation-page li {
     margin: 1% 0;
 }
 
@@ -89,4 +86,22 @@ body {
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+#background-container {
+    position: absolute;
+    top: -150px;
+    left: -150px;
+    height: 100% + 151px;
+    width: 100% + 151px;
+    margin: 0;
+    font-size: 0;
+}
+
+.background-box {
+    height: 150px;
+    width: 150px;
+    border: 1px solid black;
+    margin: 0;
+    display: inline-block;
 }
