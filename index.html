@@ -10,21 +10,26 @@
     </head>
     <body>
         <div class="alert alert-danger" id="alert">ALERT</div>
-        <div id="page-text" class="constrain-text">
-            <h1 id="page-header">Music Finder</h1>
-            <div id="pre-login">
+        <div id="prelogin-page">
+            <video autoplay muted loop>
+                <source src="background.mp4" type="video/mp4">
+            </video>
+            <h1 id="page-header" class="centered">Music Finder</h1>
+            <div id="pre-login" class="centered">
                 <label for="login">Log into Spotify:</label>
                 <button class="btn btn-offer" id="login-btn">Click Here</button>
             </div>
-
-            <form id="playlist-form" class="hidden">
+        </div>
+        <div id="playlist-entry-page" class="hidden centered">
+            <h1 id="page-header">Music Finder</h1>
+            <form id="playlist-form">
                 <label for="playlist">Enter the name of the Spotify playlist to analyze:</label>
                 <input type="text" id="playlist-entry" placeholder="ex: super cool playlist 5" required>
 
                 <button class="btn btn-offer" id="submit-btn">Submit</button>
             </form>
-
-            <div id="stats-page" class="hidden">
+        </div>
+            <div id="stats-page" class="hidden centered">
              <!--   <div id="background-container">
                     <div class="background-box"></div>
                     <div class="background-box"></div>
@@ -73,26 +78,28 @@
                 <button class="btn btn-offer" id="recommendation-btn">Show Recommendations</button>
             </div>
 
-            <div id="recommendation-page" class="hidden">
+            <div id="recommendation-page" class="hidden centered">
                 <h1>Recommendations</h1>
                 <div class="row">
                     <div class="col-12">
                         <h2>You should check out these artists:</h2>
-                        
+                        <h4>Click on an artist to add them to a new playlist</h4 >
                         <ul id="artist-recs">
                             <div class="loader"></div>
                         </ul>
                     </div>
                 </div>
+                <!--
                 <div class="row">
                     <div class="col-12">
                         <h2>You should check out these genres:</h2>
                     </div>
-                </div>
-                
+                </div>-->
+                <button class="btn btn-offer" id="generate-playlist-btn">Generate Playlist</button>
             </div>
-
-        </div>
+            <div id="finish-page" class="hidden centered">
+                <h1>Your playlist has been created!</h1>
+            </div>
         
         <script src="https://code.jquery.com/jquery-3.3.1.js" integrity="sha256-2Kok7MbOyxpgUVvAk/HJ2jigOSYS2auK4Pfzbm7uH60=" crossorigin="anonymous"></script>
        <!-- <script data-main="script" src="node_modules/requirejs/require.js"></script> -->

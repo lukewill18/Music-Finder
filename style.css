@@ -1,13 +1,52 @@
-
-
-body {
+html, body {
     font-family: "Source Sans Pro", Arial, Helvetica, sans-serif;
     overflow: hidden;
     margin: 0;
+    height: 100%;
+    width: 100%;
 }
 
-#playlist-entry {
-    width: 20%;
+.centered {
+    text-align: center;
+}
+
+#prelogin-page {
+    margin: 0;
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center center;
+    min-width: 100%;
+    min-height: 100%;
+    width: auto;
+    height: auto;
+    position: relative;
+    color: white;
+}
+
+#page-header {
+    padding-top: 16%;
+    margin: 0 auto;
+    color: black;
+    text-shadow: -1px 0 white, 0 1px white, 1px 0 white, 0 -1px white;
+}
+
+#pre-login {
+    font-size: 20px;
+}
+
+#prelogin-page video{
+    z-index: -1;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+#login-btn {
+    background-color: #1db954;
+    border: 1px solid white;
 }
 
 #submit-btn {
@@ -19,27 +58,11 @@ body {
     height: 30px;
 }
 
-#page-text {
-    padding: 0; 
-    position: relative;
-    text-align: center;
+#prelogin-page h1 {
+    font-size: 100px;
 }
 
-.constrain-text {
-    margin-top: 15%;
-    margin-left: auto;
-    margin-right: auto;
-    height: 600px;
-    width: 800px;
-}
-
-.fullpage-text {
-    margin: 0;
-    height: 100%;
-    width: 100%;
-}
-
-#page-text h1 {
+h1 {
     font-size: 60px;
 }
 
@@ -65,7 +88,7 @@ body {
     text-transform: capitalize;
 }
 
-#stats-page li, #recommendation-page li {
+#stats-page li {
     margin: 1% 0;
 }
 
@@ -104,4 +127,44 @@ body {
     border: 1px solid black;
     margin: 0;
     display: inline-block;
+}
+
+.very-close-match {
+    color: #369F5E;
+}
+
+.close-match {
+    color: #8BDA67;
+}
+
+.slight-match {
+    color: #DFEF66;
+}
+
+.very-slight-match {
+    color: #f4aa42;
+}
+
+.rec-name {
+    font-size: 24px;
+    font-weight: normal;
+
+}
+
+.rec-info {
+    text-align: center;
+    z-index: 1;
+    opacity: 0;
+    transition: opacity .4s;
+    cursor: pointer;
+}
+
+#recommendation-page li {
+    margin: 1% 300px;
+}
+
+#artist-recs {
+    overflow: auto;
+    height: 500px;
+    width: auto;
 }
