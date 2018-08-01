@@ -74,26 +74,32 @@ function getArtistPrevalence(tracks) {
 
     for(let i = 0; i < tracks.length; ++i) {
         artist = tracks[i].artist;
-        if(prevalence[artist] == undefined)
-            prevalence[artist] = {count: 1, artist_id: tracks[i].artist_id};
+        artist_lower = artist.toLowerCase();
+        if(prevalence[artist_lower] == undefined)
+            prevalence[artist_lower] = {count: 1, artist_id: tracks[i].artist_id, display_name: artist};
         else
-            prevalence[artist].count++;
+            prevalence[artist_lower].count++;
     } 
     return prevalence; 
 }
 
-function getLastfmGenres(artist, genrePrevalence, taglist) { // used if artist is not in spotify library
+function getLastfmGenres(artist, genrePrevalence) { // used if artist is not in spotify library
+    let genre_name;
     return new Promise(function(resolve, reject) {
         $.ajax({
             url: "http://ws.audioscrobbler.com/2.0/?method=artist.gettoptags&artist=" + artist + "&api_key=" + lastfm + "&format=json",
             success: function(response) {
-                if(response.hasOwnProperty("error")) return;
-                taglist = response.toptags.tag;
+                if(response.hasOwnProperty("error")) {
+                    resolve();
+                    return;
+                } 
+                let taglist = response.toptags.tag;
                 for(let i = 0; i < taglist.length && i <= 5; ++i) {
-                    if(genrePrevalence[taglist[i].name] == undefined)
-                    genrePrevalence[taglist[i].name] = 1;
+                    genre_name = taglist[i].name.toLowerCase();
+                    if(genrePrevalence[genre_name] == undefined)
+                    genrePrevalence[genre_name] = 1;
                     else
-                    genrePrevalence[taglist[i].name]++;
+                    genrePrevalence[genre_name]++;
                 }
                 resolve();
             }
@@ -101,23 +107,33 @@ function getLastfmGenres(artist, genrePrevalence, taglist) { // used if artist i
     });
 }
 
-function getSpotifyGenres(artist, artistPrevalence, taglist, promises, genrePrevalence, token) {
+function getSpotifyGenres(artists_with_id, artistPrevalence, promises, genrePrevalence, token) {
+    let artist_ids = artists_with_id.map(function(i) {
+        return artistPrevalence[i].artist_id;
+    }).join(",");
+    let artist_name;
+    let genres;
     return new Promise(function(resolve, reject) {
         $.ajax({
-            url: "https://api.spotify.com/v1/artists/" + artistPrevalence[artist].artist_id,
+            url: "https://api.spotify.com/v1/artists?ids=" + artist_ids,
             headers: {
                 'Authorization': 'Bearer ' + token
             },
             success: function(response) {
-                if(response.genres.length == 0) {
-                    promises.push(getLastfmGenres(artist, genrePrevalence, taglist));
-                }
-                for(let i = 0; i < response.genres.length && i <= 5; ++i) {
-                    artist_name = response.genres[i].toLowerCase();
-                    if(genrePrevalence[artist_name] == undefined)
-                        genrePrevalence[artist_name] = 1;
-                    else
-                        genrePrevalence[artist_name]++;
+                for(let i = 0; i < response.artists.length; ++i) {
+                    if(response.artists[i].genres.length == 0) {
+                        promises.push(getLastfmGenres(response.artists[i].name, genrePrevalence));
+                    }
+                    else {
+                        genres = response.artists[i].genres;
+                        for(let i = 0; i < genres.length && i <= 5; ++i) {
+                            genre_name = genres[i].toLowerCase();
+                            if(genrePrevalence[genre_name] == undefined)
+                                genrePrevalence[genre_name] = 1;
+                            else
+                                genrePrevalence[genre_name]++;
+                        }
+                    }
                 }
                 resolve();
             }
@@ -126,23 +142,30 @@ function getSpotifyGenres(artist, artistPrevalence, taglist, promises, genrePrev
 }
 
 function getGenrePrevalence(artistPrevalence, token, genrePrevalence) {
-    let taglist;
     let promises = [];
-    for(let artist in artistPrevalence) {
-        if(artistPrevalence[artist].artist_id == null) { 
-            promises.push(getLastfmGenres(artist, genrePrevalence, taglist));
-        }
-        else {
-            promises.push(getSpotifyGenres(artist, artistPrevalence, taglist, promises, genrePrevalence, token));
-        }/*
-        if(prevalence.hasOwnProperty("seen live"))
-            prevalence["seen live"] = 0; //idk why this is a tag*/
+    let artists_with_id = Object.keys(artistPrevalence).filter(function(i) {
+        return artistPrevalence[i].artist_id != null;
+    });
+    let no_ids = Object.keys(artistPrevalence).filter(function(i) {
+        return artistPrevalence[i].artist_id == null;
+    });
+    
+    for(let i = 0; i < no_ids.length; ++i) {
+        promises.push(getLastfmGenres(no_ids[i], genrePrevalence));
+    }
+
+    for(let i = 0; i < artists_with_id.length; i += 50) { 
+        promises.push(getSpotifyGenres(artists_with_id.slice(i, i + 50), artistPrevalence, promises, genrePrevalence, token));
     }
     return Promise.all(promises);
 }
 
 function getSpotifyRecs(artist, artistPrevalence, token, recname, recs) {
     return new Promise(function(resolve, reject) {
+        if(artistPrevalence[artist].artist_id == null) {
+            resolve();
+            return;
+        }
         $.ajax({
             url: "https://api.spotify.com/v1/artists/" + artistPrevalence[artist].artist_id + "/related-artists",
             headers: {
@@ -153,11 +176,11 @@ function getSpotifyRecs(artist, artistPrevalence, token, recname, recs) {
                     recname = response.artists[i].name;
                     if(recs.hasOwnProperty(recname)) {
                         recs[recname].match += artistPrevalence[artist].count * .5;
-                        recs[recname].similarTo.push({name: artist, similarity: .7});
+                        recs[recname].similarTo.push({name: artistPrevalence[artist].display_name, similarity: .7});
                     }
                     else {
-                        if(artistPrevalence.hasOwnProperty(recname)) continue;
-                        recs[recname] = {match: artistPrevalence[artist].count * .5, similarTo: [ {name: artist, similarity: .7} ] };
+                        if(artistPrevalence.hasOwnProperty(recname.toLowerCase())) continue;
+                        recs[recname] = {match: artistPrevalence[artist].count * .5, similarTo: [ {name: artistPrevalence[artist].display_name, similarity: .7} ] };
                     }
                 }
                 resolve();
@@ -182,11 +205,11 @@ function getLastfmRecs(artist, artistPrevalence, token, recname, recs, promises)
                         recname = lastfmrecs[i].name;
                         if(recs.hasOwnProperty(recname)) {
                             recs[recname].match += (artistPrevalence[artist].count * lastfmrecs[i].match); //weight with number of occurences of parent artist * similarity of child
-                            recs[recname].similarTo.push({name: artist, similarity: lastfmrecs[i].match});
+                            recs[recname].similarTo.push({name: artistPrevalence[artist].display_name, similarity: lastfmrecs[i].match});
                         }
                         else {
-                            if(artistPrevalence.hasOwnProperty(recname)) continue; // user already listens to this artist
-                            recs[recname] = { match: artistPrevalence[artist].count * lastfmrecs[i].match, similarTo: [{name: artist, similarity: lastfmrecs[i].match}] };
+                            if(artistPrevalence.hasOwnProperty(recname.toLowerCase())) continue; // user already listens to this artist
+                            recs[recname] = { match: artistPrevalence[artist].count * lastfmrecs[i].match, similarTo: [{name: artistPrevalence[artist].display_name, similarity: lastfmrecs[i].match}] };
                         }
                     }
                     resolve();
@@ -304,7 +327,7 @@ $(document).ready(async function() {
             return artistPrevalence[b].count - artistPrevalence[a].count;
         });
         for(let i = 0; i < artistOrder.length && i <= 10; ++i) {
-            template += `<li class="top-artist">${artistOrder[i]} (${(artistPrevalence[artistOrder[i]].count/tracks.length * 100).toFixed(2)}%)</li>`;
+            template += `<li class="top-artist">${artistPrevalence[artistOrder[i]].display_name} (${(artistPrevalence[artistOrder[i]].count/tracks.length * 100).toFixed(2)}%)</li>`;
         }
         topArtists.find(".loading").remove();
         topArtists.append(template);
@@ -360,6 +383,7 @@ $(document).ready(async function() {
     
     function handleRecommendations() {
         let artistRecs = {};
+        console.log(artistPrevalence);
         let artistRecPromise = collectArtistRecs(artistPrevalence, token, artistRecs);
         artistRecPromise.then(function() {
             //console.log(artistRecs);
