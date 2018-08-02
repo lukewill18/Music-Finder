@@ -276,21 +276,129 @@ function createEmptyPlaylist(user, token, playlistName) {
     });
 }
 
-function getArtistIds(artistsToAdd, token) {
+function getArtistId(artist, token, artistIds) {
+    if(artist.split(" ")[0].toLowerCase() == "the") {
+        artist = artist.slice(4);
+    }
     return new Promise(function(resolve, reject) {
         $.ajax({
-           //SEARCH
-        });
+            url: "https://api.spotify.com/v1/search?q=" + artist + "&type=artist&limit=1",
+            headers: {
+                'Authorization': 'Bearer ' + token,
+            },
+            success: function(response) {
+                if(response.artists.total == 0) {
+                    resolve();
+                    return;
+                }
+                artistIds.push(response.artists.items[0].id);
+                resolve();
+            }
+        }); 
     });
+}
+
+
+function getMostPopularTopTracks(tracks, mostPopular) {
+    let i = 0;
+    let nextPopularity;
+    let topPopularity = tracks[0].popularity;
+    do {
+        mostPopular.push(tracks[i]);
+        nextPopularity = (i < tracks.length - 1) ? tracks[i + 1].popularity : -1000;
+        ++i;
+    }
+    while(topPopularity - nextPopularity <= 3);
+}
+
+function findBestTrack(mostPopular, tracksToAdd) {
+    if(mostPopular.length == 1) {
+        tracksToAdd.push(mostPopular[0]);
+    }
+    else {
+        let sameDate = true;
+        for(let i = 0; i < mostPopular.length - 1; ++i) {
+            sameDate = sameDate && (mostPopular[i].album.release_date == mostPopular[i + 1].album.release_date);
+        }
+        if(sameDate) {
+            tracksToAdd.push(mostPopular[0]);
+        }
+        else {
+            mostPopular.sort(function(a, b) {
+                return (new Date(a.album.release_date) > new Date(b.album.release_date));
+            });
+            tracksToAdd.push(mostPopular[0]);
+        }
+    }
+}
+
+function findTopTracks(artistIds, tracksToAdd, token) {
+    let promises = [];
+    for(let i = 0; i < artistIds.length; ++i) {
+        promises.push(new Promise(function(resolve, reject) {
+            $.ajax({
+                url: "https://api.spotify.com/v1/artists/" + artistIds[i] + "/top-tracks?country=US",
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                },
+                success: function(response) {
+                    let mostPopular = [];
+                    getMostPopularTopTracks(response.tracks, mostPopular);
+                    findBestTrack(mostPopular, tracksToAdd);
+                    resolve();
+                }
+            });
+        }));
+    }
+    return Promise.all(promises);
+}
+
+function addTracksToPlaylist(trackids, playlist, user, token) {
+    let promises = [];
+    for(let i = 0; i < trackids.length; i += 100) {
+        let track_slice = trackids.slice(i, i + 100);
+        let json_string = JSON.stringify({
+            "uris": track_slice
+        });
+        promises.push(new Promise(function(resolve, reject) {
+            $.ajax({
+                url: "https://api.spotify.com/v1/users/" + user + "/playlists/" + playlist + "/tracks",
+                method: "POST",
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                },
+                contentType: "application/json",
+                data: json_string,
+                success: function(response) {
+                    resolve();
+                }
+            });
+        }));
+    }
+    return Promise.all(promises);
 }
 
 function generatePlaylist(artistsToAdd, user, token, playlistName) {
     let tracksToAdd = [];
     let promises = [];
+    let artistIds = [];
+    let playlist;
+
     promises.push(createEmptyPlaylist(user, token, playlistName));
-    promises.push(getArtistIds(artistsToAdd, token));
-    Promise.all(promises).then(function(playlist) {
-        
+    for(let i = 0; i < artistsToAdd.length; ++i) {
+        promises.push(getArtistId(artistsToAdd[i], token, artistIds));
+    }
+    Promise.all(promises).then(function(resolves) {
+        playlist = resolves[0];
+        return findTopTracks(artistIds, tracksToAdd, token);
+    }).then(function() {
+        let trackIds = tracksToAdd.map(function(track){
+            return track.uri;
+        });
+        console.log('here');
+        return addTracksToPlaylist(trackIds, playlist.id, user, token)
+    }).then(function() {
+        console.log("all done");
     });
 }
 
