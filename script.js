@@ -159,6 +159,15 @@ function getGenrePrevalence(artistPrevalence, token, genrePrevalence) {
     }
     return Promise.all(promises);
 }
+/*
+function getAdditionalArtistInfo(artist, token, recs) {
+    return new Promise(function(resolve, reject) {
+        $.ajax({
+            
+        });
+        resolve();
+    });
+}*/
 
 function getSpotifyRecs(artist, artistPrevalence, token, recname, recs) {
     return new Promise(function(resolve, reject) {
@@ -180,7 +189,11 @@ function getSpotifyRecs(artist, artistPrevalence, token, recname, recs) {
                     }
                     else {
                         if(artistPrevalence.hasOwnProperty(recname.toLowerCase())) continue;
-                        recs[recname] = {match: artistPrevalence[artist].count * .5, similarTo: [ {name: artistPrevalence[artist].display_name, similarity: .7} ] };
+                        console.log("spotify", response);
+                        let images = response.artists[i].images;
+                        let pic = images.length > 0 ? images[0] : "http://www.emoji.co.uk/files/microsoft-emojis/symbols-windows10/10176-white-question-mark-ornament.png";
+                        recs[recname] = {match: artistPrevalence[artist].count * .5, similarTo: [ {name: artistPrevalence[artist].display_name, similarity: .7}], info_id: null,
+                        image: pic};                    
                     }
                 }
                 resolve();
@@ -194,7 +207,8 @@ function getLastfmRecs(artist, artistPrevalence, token, recname, recs, promises)
         let lastfmrecs;
         $.ajax({
             url: "http://ws.audioscrobbler.com/2.0/?method=artist.getsimilar&artist=" + artist + "&api_key=" + lastfm + "&format=json",
-            success: async function(response) {                
+            success: async function(response) {    
+                console.log(response);
                 if(response.hasOwnProperty("error")) {
                     promises.push(getSpotifyRecs(artist, artistPrevalence, token, recname, recs));
                     resolve();
@@ -209,7 +223,13 @@ function getLastfmRecs(artist, artistPrevalence, token, recname, recs, promises)
                         }
                         else {
                             if(artistPrevalence.hasOwnProperty(recname.toLowerCase())) continue; // user already listens to this artist
-                            recs[recname] = { match: artistPrevalence[artist].count * lastfmrecs[i].match, similarTo: [{name: artistPrevalence[artist].display_name, similarity: lastfmrecs[i].match}] };
+                            let images = lastfmrecs[i].image;
+                            let pic = images.length > 4 ? images[4]["#text"] : "http://www.emoji.co.uk/files/microsoft-emojis/symbols-windows10/10176-white-question-mark-ornament.png";
+
+                            recs[recname] = { match: artistPrevalence[artist].count * lastfmrecs[i].match, 
+                                similarTo: [{name: artistPrevalence[artist].display_name, similarity: lastfmrecs[i].match}], info_id: null,
+                                image: pic};
+                           // promises.push(getAdditionalArtistInfo(artist, token, recs)); // might slow things down significantly
                         }
                     }
                     resolve();
@@ -220,7 +240,6 @@ function getLastfmRecs(artist, artistPrevalence, token, recname, recs, promises)
 }
 
 function collectArtistRecs(artistPrevalence, token, recs) {
-    
     let recname;
     let promises = [];
 
@@ -243,7 +262,7 @@ function collectGenreRecs(genrePrevalence) {
     }
 }
 
-function chooseSimClass(sim) {
+function determineSimilarity(sim) {
     if(sim >= .7)
         return "very-close-match";
     else if(sim >= .5)
@@ -383,22 +402,25 @@ function generatePlaylist(artistsToAdd, user, token, playlistName) {
     let promises = [];
     let artistIds = [];
     let playlist;
+    let url;
 
     promises.push(createEmptyPlaylist(user, token, playlistName));
     for(let i = 0; i < artistsToAdd.length; ++i) {
         promises.push(getArtistId(artistsToAdd[i], token, artistIds));
     }
-    Promise.all(promises).then(function(resolves) {
-        playlist = resolves[0];
-        return findTopTracks(artistIds, tracksToAdd, token);
-    }).then(function() {
-        let trackIds = tracksToAdd.map(function(track){
-            return track.uri;
+    return new Promise(function(resolve, reject) {
+        Promise.all(promises).then(function(resolves) {
+            playlist = resolves[0];
+            return findTopTracks(artistIds, tracksToAdd, token);
+        }).then(function() {
+            let trackIds = tracksToAdd.map(function(track){
+                return track.uri;
+            });
+            return addTracksToPlaylist(trackIds, playlist.id, user, token)
+        }).then(function() {
+            url = playlist.external_urls.spotify;
+            resolve(url);
         });
-        console.log('here');
-        return addTracksToPlaylist(trackIds, playlist.id, user, token)
-    }).then(function() {
-        console.log("all done");
     });
 }
 
@@ -440,17 +462,22 @@ async function collectAllLyrics(tracks) {
 }*/
 
 $(document).ready(function() {
+    const body = $("body");
     const playlistPage = $("#playlist-entry-page");
     const form = playlistPage.find("#playlist-form");
     const input = form.children("#playlist-entry");
     const alert = $("#alert");
     const statsPage = $("#stats-page");
     const recPage = $("#recommendation-page");
+    const finishPage = $("#finish-page");
     const topArtists = statsPage.find("#top-artists");
     const topGenres = statsPage.find("#top-genres");
     const artistRecList = recPage.find("#artist-recs");
     const pageHeader = $("#page-header");
     const pageText = $("#page-text");
+    const modalContainer = recPage.find("#modal-container");
+    const recModal = modalContainer.find("#rec-modal");
+    const closeModalBtn = recModal.find("#rec-modal-close");
     let playlists;
     let user;
     let token;
@@ -463,6 +490,7 @@ $(document).ready(function() {
     let tracks = [];
     let artistRecs = {};
     let artistsToAdd = [];
+    let current_rec_info;
 
     let url_check = window.location.href.match(url_re);
     if(url_check != null) {
@@ -531,32 +559,49 @@ $(document).ready(function() {
 
     }
 
+    function generateArtistInfoTemplate(artistRecs, recOrder, i, sortedSimilar) {
+        let template = `<div class="rec-info-box hidden" id="info${i}">
+                            <h2>${recOrder[i]}</h2>
+                            <div class="row">
+                                <div class="col-5 artist-img-col">
+                                    <img class="artist-img" src="${artistRecs[recOrder[i]].image}">
+                                </div>
+                                <div class="col-7">
+                                    blah blah
+                                </div>
+                            </div>
+                            <div class="similar-to-box"><p class="similar-to">Similar to: `;
+        for(let j = 0; j < sortedSimilar.length; ++j) {
+            let sim = sortedSimilar[j].similarity;
+            let simClass = determineSimilarity(sim);      
+            template += `<span class="${simClass}">${sortedSimilar[j].name}</span>, `
+        }
+        template = template.slice(0, -2);
+        template += `</p></div></div>`;
+        return template;
+    }
 
     function insertArtistRecs(artistRecs) {
-        let template = ``;
+        console.log(artistRecs);
+        let li_template = `<li class="artist-rec centered"><input type="checkbox" id="check-all"></li><br>`;
+        let info_template  = ``;
         let recOrder = Object.keys(artistRecs).sort(function(a, b) {
             return artistRecs[b].match - artistRecs[a].match;
         });
-        for(let i = 0; i < recOrder.length && i <= 50; ++i) {
-            let sortedRecs = artistRecs[recOrder[i]].similarTo.sort(function(a, b) {
+        for(let i = 0; i < recOrder.length && i < 50; ++i) {
+            let sortedSimilar = artistRecs[recOrder[i]].similarTo.sort(function(a, b) {
                 return b.similarity - a.similarity;
             });
-             
-            template += `<li class="artist-rec"><strong class="rec-name">${recOrder[i]}</strong> <span class="rec-info hidden">(similar to: `;
-            for(let j = 0; j < sortedRecs.length; ++j) {
-                let sim = sortedRecs[j].similarity;
-                let simClass = chooseSimClass(sim);      
-                template += `<span class="${simClass}">${sortedRecs[j].name}</span>, `
-            }
-            template = template.slice(0, -2);
-            template += `)</span></li>`
+            artistRecs[recOrder[i]].info_id = "info" + i.toString();
+            li_template += `<li class="artist-rec centered"><input type="checkbox" class="rec-checkbox"><span class="rec-name">${recOrder[i]}</span></li>`;
+            info_template += generateArtistInfoTemplate(artistRecs, recOrder, i, sortedSimilar);
         }
         artistRecList.find(".loader").remove();
-        artistRecList.append(template);
+        artistRecList.append(li_template);
+        recModal.append(info_template);
     }
     
     function handleRecommendations() {
-        
         let artistRecPromise = collectArtistRecs(artistPrevalence, token, artistRecs);
         artistRecPromise.then(function() {
             //console.log(artisRecs);
@@ -584,27 +629,70 @@ $(document).ready(function() {
         handleRecommendations();
        });
 
-    recPage.on("mouseenter", "li", function() {
-       // $(this).find(".rec-name").addClass("hidden");
-        $(this).find(".rec-info").removeClass("hidden");
-        $(this).find(".rec-info").css("opacity", "1");
-    });
-    recPage.on("mouseleave", "li", function() {
-        $(this).find(".rec-info").css("opacity", "0");
-        $(this).find(".rec-info").addClass("hidden");
-    //    $(this).find(".rec-name").removeClass("hidden");
+
+    function hideModal() {
+        modalContainer.css("display", "none");
+        body.toggleClass("stop-scroll");
+        recModal.css("opacity", "0");
+        artistRecList.find(".artist-rec").css("z-index", "0");
+        current_rec_info.toggleClass("hidden");
+    }
+    
+    closeModalBtn.click(hideModal);
+
+    recPage.click(function(event) {
+        if($(event.target).is(modalContainer)) {
+          hideModal();
+        }
     });
 
-    recPage.on("click", "li", function() {
-        let name = $(this).find(".rec-name").text();
-        if(artistRecs.hasOwnProperty(name)) {
-            artistsToAdd.push(name);
+    let modalAnimation = anime({
+        targets: '#rec-modal',
+        opacity: 1,
+        top: "50px",
+        easing: "linear",
+        duration: 350
+    });
+
+    let backgroundAnimation = anime({
+        targets: '#modal-container',
+        background: "rgba(0, 0, 0, .4)",
+        duration: 250
+    });
+
+    recPage.on("mouseenter", ".rec-name", function() {
+        //Display notable albums in rec-info area
+        if(artistRecs.hasOwnProperty($(this).text())) {
+            //
         }
-        $(this).remove();
+    });
+
+    recPage.on("click", ".rec-name", function() {
+        let name = $(this).text();
+        if(!artistRecs.hasOwnProperty(name)) return;
+        current_rec_info = $("#" + artistRecs[name].info_id);
+        current_rec_info.toggleClass("hidden");
+        modalContainer.css("display", "block");
+        body.toggleClass("stop-scroll");
+        artistRecList.find(".artist-rec").css("z-index", "-1");
+        modalAnimation.restart();
+        backgroundAnimation.restart();
+    });
+
+
+    recPage.on("click", "#check-all", function() {
+        recPage.find(".rec-checkbox").prop("checked", this.checked);
     });
 
     recPage.find("#generate-playlist-btn").click(function() {
         if(!recs_loaded) return;
+        let checked = recPage.find(".rec-checkbox:checkbox:checked");
+        for(let i = 0; i < checked.length; ++i) {
+            let name = $(checked[i]).siblings(".rec-name").text();
+            if(artistRecs.hasOwnProperty(name)) {
+                artistsToAdd.push(name);
+            }
+        }
         let playlistName = "Music Finder Recommendations 1";
         let playlistNames = playlists.map(function(i) {
             return i.name;
@@ -615,8 +703,16 @@ $(document).ready(function() {
             playlistName += index.toString(); 
             ++index;
         }
-
-        generatePlaylist(artistsToAdd, user, token, playlistName);
+        let urlPromise = generatePlaylist(artistsToAdd, user, token, playlistName);
+        urlPromise.then(function(url) {
+            playlistURL = url;
+        });
         switchPage(recPage, $("#finish-page"));
     });
+
+    finishPage.find("#playlist-link-btn").click(function() {
+        if(playlistURL == undefined) return;
+        window.open(playlistURL);
+    });
+
 });

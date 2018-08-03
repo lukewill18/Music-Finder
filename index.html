@@ -4,6 +4,7 @@
     <head>
         <meta charset="UTF-8">
         <title>Music Finder</title>
+        <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.2.0/css/all.css" integrity="sha384-hWVjflwFxL6sNzntih27bfxkr27PmbbK/iSvJ+a4+0owXq79v+lsFkW54bOGbiDQ" crossorigin="anonymous">
         <link rel="stylesheet" href="bootstrap.css">
         <link rel="stylesheet" href="style.css">
         <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,700,300italic,400italic,700italic" rel="stylesheet" type="text/css">
@@ -80,13 +81,29 @@
 
             <div id="recommendation-page" class="hidden centered">
                 <h1>Recommendations</h1>
+                <div id="modal-container">
+                    <div id="rec-modal">
+                        <i class="fas fa-times" id="rec-modal-close"></i><br>
+                    </div>
+                </div>
                 <div class="row">
-                    <div class="col-12">
-                        <h2>You should check out these artists:</h2>
-                        <h4>Click on an artist to add them to a new playlist</h4 >
+                    <div class="col-7 col-md-12" id="recommendation-col">
+                        <div id="rec-header-container">
+                            <h2>You should check out these artists:</h2>
+                            <h4>Check an artist's box to add them to your new playlist</h4>
+                        </div>
                         <ul id="artist-recs">
                             <div class="loader"></div>
                         </ul>
+                        <div id="generate-playlist-btn-container">
+                            <button class="btn btn-offer" id="generate-playlist-btn">Generate Playlist</button>
+                        </div>    
+                    </div>
+                    <div class="col-5 col-md-0" id="info-col">
+                        <h4>Click an artist's name to display information about them</h4>
+                        <div id="rec-info-box">
+
+                        </div>
                     </div>
                 </div>
                 <!--
@@ -95,12 +112,15 @@
                         <h2>You should check out these genres:</h2>
                     </div>
                 </div>-->
-                <button class="btn btn-offer" id="generate-playlist-btn">Generate Playlist</button>
+                
             </div>
             <div id="finish-page" class="hidden centered">
                 <h1>Your playlist has been created!</h1>
+                <button id="playlist-link-btn" class="btn btn-offer">Start Listening</button>
             </div>
         
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/2.2.0/anime.js"></script>
         <script src="https://code.jquery.com/jquery-3.3.1.js" integrity="sha256-2Kok7MbOyxpgUVvAk/HJ2jigOSYS2auK4Pfzbm7uH60=" crossorigin="anonymous"></script>
        <!-- <script data-main="script" src="node_modules/requirejs/require.js"></script> -->
         <script src="script.js"></script>
