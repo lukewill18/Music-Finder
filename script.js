@@ -159,15 +159,134 @@ function getGenrePrevalence(artistPrevalence, token, genrePrevalence) {
     }
     return Promise.all(promises);
 }
-/*
-function getAdditionalArtistInfo(artist, token, recs) {
+
+function getMostPopularTopTracks(tracks, mostPopular) {
+    let i = 0;
+    let nextPopularity;
+    let topPopularity = tracks[0].popularity;
+    do {
+        mostPopular.push(tracks[i]);
+        nextPopularity = (i < tracks.length - 1) ? tracks[i + 1].popularity : -1000;
+        ++i;
+    }
+    while(topPopularity - nextPopularity <= 3);
+}
+
+function findBestTrack(mostPopular) {
+    if(mostPopular.length == 1) {
+        return mostPopular[0];
+    }
+    else {
+        let sameDate = true;
+        for(let i = 0; i < mostPopular.length - 1; ++i) {
+            sameDate = sameDate && (mostPopular[i].album.release_date == mostPopular[i + 1].album.release_date);
+        }
+        if(sameDate) {
+            return mostPopular[0];
+        }
+        else {
+            mostPopular.sort(function(a, b) {
+                return (new Date(a.album.release_date) > new Date(b.album.release_date));
+            });
+            return mostPopular[0];
+        }
+    }
+}
+
+function filterDuplicateAlbums(albums) {
+    let add;
+    let no_duplicates = [];
+    for(let i = albums.length - 1; i >= 0; --i) {
+        add = true;
+        let name1 = albums[i].name.toLowerCase();
+        for(let j = 0; j < no_duplicates.length; ++j) {
+            let name2 = no_duplicates[j].name.toLowerCase();
+            if(name1.includes(name2) || name2.includes(name1)) {
+                add = false;
+            }
+        }
+        if(add) no_duplicates.push(albums[i]);
+    }
+    return no_duplicates;
+}
+
+function setAlbumArt(spotify_id, token, recs, artist) {
     return new Promise(function(resolve, reject) {
         $.ajax({
-            
+            url: "https://api.spotify.com/v1/artists/" + spotify_id + "/albums?include_groups=album&limit=50",
+            headers: {
+                'Authorization': 'Bearer ' + token,
+            },
+            success: function(response) {
+                let no_duplicates = filterDuplicateAlbums(response.items);
+                for(let i = 0; i < no_duplicates.length; ++i) {
+                    if(no_duplicates[i].images.length > 0) {
+                        let img = no_duplicates[i].images[0].url;
+                        recs[artist].album_art.push(img);
+                    }
+                }
+                resolve();
+            }
         });
-        resolve();
     });
-}*/
+}
+
+function setTopTrack(spotify_id, token, recs, artist) {
+    return new Promise(function(resolve, reject) {
+        $.ajax({
+            url: "https://api.spotify.com/v1/artists/" + spotify_id + "/top-tracks?country=US",
+            headers: {
+                'Authorization': 'Bearer ' + token,
+            },
+            success: function(response) {
+                let mostPopular = [];
+                getMostPopularTopTracks(response.tracks, mostPopular);
+                recs[artist].top_track = findBestTrack(mostPopular);
+                resolve();
+            }
+        });
+    });
+}
+
+function setIDAndGenres(searchname, token, recs, artist) {
+    return new Promise(function(resolve, reject) {
+        $.ajax({
+            url: "https://api.spotify.com/v1/search?q=" + searchname + "&type=artist&limit=1",
+            headers: {
+                'Authorization': 'Bearer ' + token,
+            },
+            success: function(response) {
+               //  console.log(response);
+                if(response.artists.total == 0) {
+                    resolve();
+                    return;
+                }
+                recs[artist].spotify_id = response.artists.items[0].id;
+                recs[artist].genres = response.artists.items[0].genres;
+                resolve(recs[artist].spotify_id);
+            }
+        }); 
+    });
+}
+
+function getAdditionalArtistInfo(artist, token, recs) { //get album covers, display them 1 at a time on right on hover, slideshow
+    let searchname = artist.split(" ")[0].toLowerCase() == "the" ?  artist.slice(4) : artist;    
+    return new Promise(function(resolve, reject) {
+        let p1 = setIDAndGenres(searchname, token, recs, artist);
+        p1.then(function(spotify_id) {
+            if(spotify_id == undefined)
+                resolve();
+            else {
+                let promises = [];
+                promises.push(setTopTrack(spotify_id, token, recs, artist));
+                promises.push(setAlbumArt(spotify_id, token, recs, artist));
+                return Promise.all(promises);
+            }
+        }).then(function() {
+            resolve();
+        });
+    });
+}
 
 function getSpotifyRecs(artist, artistPrevalence, token, recname, recs) {
     return new Promise(function(resolve, reject) {
@@ -181,6 +300,7 @@ function getSpotifyRecs(artist, artistPrevalence, token, recname, recs) {
                 'Authorization': 'Bearer ' + token
             },
             success: function(response) {
+               // console.log("spotify", response);
                 for(let i = 0; i < response.artists.length; ++i) {
                     recname = response.artists[i].name;
                     if(recs.hasOwnProperty(recname)) {
@@ -189,11 +309,10 @@ function getSpotifyRecs(artist, artistPrevalence, token, recname, recs) {
                     }
                     else {
                         if(artistPrevalence.hasOwnProperty(recname.toLowerCase())) continue;
-                        console.log("spotify", response);
                         let images = response.artists[i].images;
                         let pic = images.length > 0 ? images[0] : "http://www.emoji.co.uk/files/microsoft-emojis/symbols-windows10/10176-white-question-mark-ornament.png";
                         recs[recname] = {match: artistPrevalence[artist].count * .5, similarTo: [ {name: artistPrevalence[artist].display_name, similarity: .7}], info_id: null,
-                        image: pic};                    
+                        art_id: null, image: pic, spotify_id: null, genres: [], top_track: null, album_art: []};                    
                     }
                 }
                 resolve();
@@ -207,8 +326,8 @@ function getLastfmRecs(artist, artistPrevalence, token, recname, recs, promises)
         let lastfmrecs;
         $.ajax({
             url: "http://ws.audioscrobbler.com/2.0/?method=artist.getsimilar&artist=" + artist + "&api_key=" + lastfm + "&format=json",
-            success: async function(response) {    
-                console.log(response);
+            success: function(response) {    
+             //   console.log(response);
                 if(response.hasOwnProperty("error")) {
                     promises.push(getSpotifyRecs(artist, artistPrevalence, token, recname, recs));
                     resolve();
@@ -228,8 +347,7 @@ function getLastfmRecs(artist, artistPrevalence, token, recname, recs, promises)
 
                             recs[recname] = { match: artistPrevalence[artist].count * lastfmrecs[i].match, 
                                 similarTo: [{name: artistPrevalence[artist].display_name, similarity: lastfmrecs[i].match}], info_id: null,
-                                image: pic};
-                           // promises.push(getAdditionalArtistInfo(artist, token, recs)); // might slow things down significantly
+                                art_id: null, image: pic, spotify_id: null, genres: [], top_track: null, album_art: []};
                         }
                     }
                     resolve();
@@ -295,83 +413,6 @@ function createEmptyPlaylist(user, token, playlistName) {
     });
 }
 
-function getArtistId(artist, token, artistIds) {
-    if(artist.split(" ")[0].toLowerCase() == "the") {
-        artist = artist.slice(4);
-    }
-    return new Promise(function(resolve, reject) {
-        $.ajax({
-            url: "https://api.spotify.com/v1/search?q=" + artist + "&type=artist&limit=1",
-            headers: {
-                'Authorization': 'Bearer ' + token,
-            },
-            success: function(response) {
-                if(response.artists.total == 0) {
-                    resolve();
-                    return;
-                }
-                artistIds.push(response.artists.items[0].id);
-                resolve();
-            }
-        }); 
-    });
-}
-
-
-function getMostPopularTopTracks(tracks, mostPopular) {
-    let i = 0;
-    let nextPopularity;
-    let topPopularity = tracks[0].popularity;
-    do {
-        mostPopular.push(tracks[i]);
-        nextPopularity = (i < tracks.length - 1) ? tracks[i + 1].popularity : -1000;
-        ++i;
-    }
-    while(topPopularity - nextPopularity <= 3);
-}
-
-function findBestTrack(mostPopular, tracksToAdd) {
-    if(mostPopular.length == 1) {
-        tracksToAdd.push(mostPopular[0]);
-    }
-    else {
-        let sameDate = true;
-        for(let i = 0; i < mostPopular.length - 1; ++i) {
-            sameDate = sameDate && (mostPopular[i].album.release_date == mostPopular[i + 1].album.release_date);
-        }
-        if(sameDate) {
-            tracksToAdd.push(mostPopular[0]);
-        }
-        else {
-            mostPopular.sort(function(a, b) {
-                return (new Date(a.album.release_date) > new Date(b.album.release_date));
-            });
-            tracksToAdd.push(mostPopular[0]);
-        }
-    }
-}
-
-function findTopTracks(artistIds, tracksToAdd, token) {
-    let promises = [];
-    for(let i = 0; i < artistIds.length; ++i) {
-        promises.push(new Promise(function(resolve, reject) {
-            $.ajax({
-                url: "https://api.spotify.com/v1/artists/" + artistIds[i] + "/top-tracks?country=US",
-                headers: {
-                    'Authorization': 'Bearer ' + token,
-                },
-                success: function(response) {
-                    let mostPopular = [];
-                    getMostPopularTopTracks(response.tracks, mostPopular);
-                    findBestTrack(mostPopular, tracksToAdd);
-                    resolve();
-                }
-            });
-        }));
-    }
-    return Promise.all(promises);
-}
-
 function addTracksToPlaylist(trackids, playlist, user, token) {
     let promises = [];
     for(let i = 0; i < trackids.length; i += 100) {
@@ -397,25 +438,23 @@ function addTracksToPlaylist(trackids, playlist, user, token) {
     return Promise.all(promises);
 }
 
-function generatePlaylist(artistsToAdd, user, token, playlistName) {
-    let tracksToAdd = [];
+function generatePlaylist(artistsToAdd, user, token, playlistName, artistRecs) {
+    let tracksToAdd = artistsToAdd.map(function(i) {
+        return artistRecs[i].top_track;
+    });
     let promises = [];
-    let artistIds = [];
     let playlist;
     let url;
 
     promises.push(createEmptyPlaylist(user, token, playlistName));
-    for(let i = 0; i < artistsToAdd.length; ++i) {
-        promises.push(getArtistId(artistsToAdd[i], token, artistIds));
-    }
     return new Promise(function(resolve, reject) {
         Promise.all(promises).then(function(resolves) {
             playlist = resolves[0];
-            return findTopTracks(artistIds, tracksToAdd, token);
-        }).then(function() {
-            let trackIds = tracksToAdd.map(function(track){
+            let trackIds = tracksToAdd.filter(function(track){
+                return track != null;
+            }).map(function(track) {
                 return track.uri;
-            });
+            });;
             return addTracksToPlaylist(trackIds, playlist.id, user, token)
         }).then(function() {
             url = playlist.external_urls.spotify;
@@ -476,6 +515,7 @@ $(document).ready(function() {
     const pageHeader = $("#page-header");
     const pageText = $("#page-text");
     const modalContainer = recPage.find("#modal-container");
+    const artBox = recPage.find("#album-art-box");
     const recModal = modalContainer.find("#rec-modal");
     const closeModalBtn = recModal.find("#rec-modal-close");
     let playlists;
@@ -491,6 +531,8 @@ $(document).ready(function() {
     let artistRecs = {};
     let artistsToAdd = [];
     let current_rec_info;
+    let current_art;
+    let shuffle;
 
     let url_check = window.location.href.match(url_re);
     if(url_check != null) {
@@ -554,20 +596,37 @@ $(document).ready(function() {
             let genrePromise = getGenrePrevalence(artistPrevalence, token, genrePrevalence);
             genrePromise.then(function() {
                 insertTopGenres(tracks);
-            });
+            }); 
         });
 
     }
 
-    function generateArtistInfoTemplate(artistRecs, recOrder, i, sortedSimilar) {
+    function generateArtistModalTemplate(artistRecs, recOrder, i, sortedSimilar) {
         let template = `<div class="rec-info-box hidden" id="info${i}">
                             <h2>${recOrder[i]}</h2>
                             <div class="row">
                                 <div class="col-5 artist-img-col">
                                     <img class="artist-img" src="${artistRecs[recOrder[i]].image}">
                                 </div>
-                                <div class="col-7">
-                                    blah blah
+                                <div class="col-7 left-align">
+                                    <div class="rec-genre-list-container">`;
+                                    if(artistRecs[recOrder[i]].genres.length > 0) {
+                                        template += `<p class="rec-genre-list">Genres: ${artistRecs[recOrder[i]].genres.join(", ")}</p>`;
+                                    }
+                                    else {
+                                        template += `(No genres available)`
+                                    }
+                                    template += `
+                                    </div>
+                                    <div class="song-preview-container">`;
+                        if(artistRecs[recOrder[i]].top_track != null) {
+                            template += `<audio controls class="preview-clip" preload="none" src="${artistRecs[recOrder[i]].top_track.preview_url}">`
+                        }
+                        else {
+                            template += `(No song preview available)`
+                        }
+                        template += `
+                                    </div>
                                 </div>
                             </div>
                             <div class="similar-to-box"><p class="similar-to">Similar to: `;
@@ -581,31 +640,57 @@ $(document).ready(function() {
         return template;
     }
 
-    function insertArtistRecs(artistRecs) {
-        console.log(artistRecs);
+    function generateSideArtTemplate(artistRecs, recOrder, i) {
+        let template = `<div id="art${i}" class="hidden">`;
+        artistRecs[recOrder[i]].art_id = "art" + i.toString();
+        let art = artistRecs[recOrder[i]].album_art;
+        for(let j = 0; j < art.length; ++j) {
+            template += `<img class="album-art" src="${art[j]}">`
+        }
+        template += `</div>`
+        return template;
+    }
+
+    function insertArtistRecs(artistRecs, token) {
+        let promises = [];
         let li_template = `<li class="artist-rec centered"><input type="checkbox" id="check-all"></li><br>`;
-        let info_template  = ``;
+        let modal_template  = ``;
+        let side_art_template = ``;
         let recOrder = Object.keys(artistRecs).sort(function(a, b) {
             return artistRecs[b].match - artistRecs[a].match;
         });
         for(let i = 0; i < recOrder.length && i < 50; ++i) {
-            let sortedSimilar = artistRecs[recOrder[i]].similarTo.sort(function(a, b) {
-                return b.similarity - a.similarity;
-            });
-            artistRecs[recOrder[i]].info_id = "info" + i.toString();
-            li_template += `<li class="artist-rec centered"><input type="checkbox" class="rec-checkbox"><span class="rec-name">${recOrder[i]}</span></li>`;
-            info_template += generateArtistInfoTemplate(artistRecs, recOrder, i, sortedSimilar);
+            promises.push(getAdditionalArtistInfo(recOrder[i], token, artistRecs));
         }
-        artistRecList.find(".loader").remove();
-        artistRecList.append(li_template);
-        recModal.append(info_template);
+        Promise.all(promises).then(function() {
+            for(let i = 0; i < recOrder.length && i < 50; ++i) {
+                let sortedSimilar = artistRecs[recOrder[i]].similarTo.sort(function(a, b) {
+                    return b.similarity - a.similarity;
+                });
+                artistRecs[recOrder[i]].info_id = "info" + i.toString();
+                li_template += `<li class="artist-rec centered"><input type="checkbox" class="rec-checkbox"><span class="rec-name">${recOrder[i]}</span></li>`;
+                modal_template += generateArtistModalTemplate(artistRecs, recOrder, i, sortedSimilar);
+                side_art_template += generateSideArtTemplate(artistRecs, recOrder, i);
+            }
+            artistRecList.find(".loader").remove();
+            artistRecList.append(li_template);
+            recModal.append(modal_template);
+            artBox.append(side_art_template);
+            let audio_clips = recModal.find(".preview-clip");
+            for(let i = 0; i < audio_clips.length; ++i) {
+                audio_clips[i].volume = .25;
+            }
+        });        
+        return Promise.all(promises);
     }
     
     function handleRecommendations() {
         let artistRecPromise = collectArtistRecs(artistPrevalence, token, artistRecs);
         artistRecPromise.then(function() {
             //console.log(artisRecs);
-            insertArtistRecs(artistRecs);
+            return insertArtistRecs(artistRecs, token);
+            
+        }).then(function() {
             recs_loaded = true;
         });
         //let genreRecs = collectGenreRecs(genrePrevalence);
@@ -635,7 +720,11 @@ $(document).ready(function() {
         body.toggleClass("stop-scroll");
         recModal.css("opacity", "0");
         artistRecList.find(".artist-rec").css("z-index", "0");
+        let current_preview = current_rec_info.find(".preview-clip")[0];
+        current_preview.pause();
+        current_preview.currentTime = 0;
         current_rec_info.toggleClass("hidden");
+        
     }
     
     closeModalBtn.click(hideModal);
@@ -660,17 +749,10 @@ $(document).ready(function() {
         duration: 250
     });
 
-    recPage.on("mouseenter", ".rec-name", function() {
-        //Display notable albums in rec-info area
-        if(artistRecs.hasOwnProperty($(this).text())) {
-            //
-        }
-    });
-
     recPage.on("click", ".rec-name", function() {
         let name = $(this).text();
         if(!artistRecs.hasOwnProperty(name)) return;
-        current_rec_info = $("#" + artistRecs[name].info_id);
+        current_rec_info = recPage.find("#" + artistRecs[name].info_id);
         current_rec_info.toggleClass("hidden");
         modalContainer.css("display", "block");
         body.toggleClass("stop-scroll");
@@ -678,6 +760,53 @@ $(document).ready(function() {
         modalAnimation.restart();
         backgroundAnimation.restart();
     });
+
+    function shuffle_art(album_art) {
+        let current = 0;
+        $(album_art[current]).css("opacity", "1");
+        shuffle = setInterval(function() {
+            $(album_art[current]).css("opacity", "0");
+            current = (current + 1) % album_art.length;
+            $(album_art[current]).css("opacity", "1");
+        }, 3000);
+    }
+
+    recPage.on("mouseenter", ".rec-name", function() {        
+        let name = $(this).text();
+        if(!artistRecs.hasOwnProperty(name)) return;
+
+        if(current_art == undefined) {
+            current_art = recPage.find("#" + artistRecs[name].art_id);
+            $(current_art).toggleClass("hidden");
+            shuffle_art($(current_art).find(".album-art"));
+        }
+        else 
+        {
+            let new_art = recPage.find("#" + artistRecs[name].art_id);
+            if(new_art[0].id == current_art[0].id) 
+                return;
+            $(current_art).addClass("hidden");
+            $(current_art).find(".album-art").css("opacity", "0");
+            clearInterval(shuffle);
+            current_art = new_art;
+            $(current_art).removeClass("hidden");
+            shuffle_art($(current_art).find(".album-art"));
+        }
+    });
+
+    function generatePlaylistName(playlists) {
+        let playlistName = "Music Finder Recommendations 1";
+        let playlistNames = playlists.map(function(i) {
+            return i.name;
+        });
+        let index = 2;
+        while(playlistNames.indexOf(playlistName) > -1) {
+            playlistName = playlistName.slice(0, -1);
+            playlistName += index.toString(); 
+            ++index;
+        }
+        return playlistName;
+    }
 
 
     recPage.on("click", "#check-all", function() {
@@ -693,22 +822,14 @@ $(document).ready(function() {
                 artistsToAdd.push(name);
             }
         }
-        let playlistName = "Music Finder Recommendations 1";
-        let playlistNames = playlists.map(function(i) {
-            return i.name;
-        });
-        let index = 2;
-        while(playlistNames.indexOf(playlistName) > -1) {
-            playlistName = playlistName.slice(0, -1);
-            playlistName += index.toString(); 
-            ++index;
-        }
-        let urlPromise = generatePlaylist(artistsToAdd, user, token, playlistName);
+        let playlistName = generatePlaylistName(playlists);
+        let urlPromise = generatePlaylist(artistsToAdd, user, token, playlistName, artistRecs);
         urlPromise.then(function(url) {
             playlistURL = url;
+            switchPage(recPage, $("#finish-page"));
         });
-        switchPage(recPage, $("#finish-page"));
     });
+
 
     finishPage.find("#playlist-link-btn").click(function() {
         if(playlistURL == undefined) return;
