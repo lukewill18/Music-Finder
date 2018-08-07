@@ -26,10 +26,15 @@ html, body {
     color: white;
 }
 
+.center-screen {
+    position: absolute;
+    top: 37%;
+    width: 100%;
+}
+
 #page-header {
-    padding-top: 16%;
-    margin: 0 auto;
     color: black;
+    margin: 0 10px;
     text-shadow: -1px 0 white, 0 1px white, 1px 0 white, 0 -1px white;
 }
 
@@ -79,6 +84,12 @@ h1 {
     
 }
 
+#stats-page .col-6 {
+    padding: 0;
+    height: 70%;
+}
+
+
 #stats-page h1, #recommendation-page h1 {
     top: 10%;
     margin: 0 auto;
@@ -93,10 +104,53 @@ h1 {
 #stats-page ul {
     font-size: 100px;
     margin: 0;
+    height: 50%;
+    overflow-y: auto;
 }
 
-#stats-page li {
+.top-genre {
     font-size: .24em;
+}
+
+#top-artists {
+    font-size: 100px;
+}
+
+.top-artist {
+    display: inline-block;
+    width: 20%;
+    height: 100%;
+    text-align: center;
+}
+
+@media screen and (max-width: 1550px) {
+    .top-artist {
+        width: 25%;
+    }
+}
+
+.top-artist-img-container {
+    height: 150px;
+    width: 150px;
+    border-radius: 100%;
+    overflow: hidden;
+    margin: 0 auto;
+}
+
+.top-artist-img {
+    object-fit: fill;
+    height: 100%;
+    width: 100%;
+}
+
+.top-artist-info {
+    font-size: .16em;
+}
+
+@media screen and (max-height: 700px) {
+    #stats-page ul {
+        font-size: 80px;
+    }
 }
 
 #stats-page ul .top-genre {
@@ -108,7 +162,7 @@ h1 {
 }
 
 #recommendation-btn {
-    margin-top: 50px;
+    margin-top: 10px;
 }
 
 .loader {
@@ -162,10 +216,18 @@ h1 {
 
 #recommendation-page {
     width: 100%;
+    min-width: 360px;
+    overflow: hidden;
+    /*font-size: 100px;*/
+    
 }
 
-#recommendation-page, #recommendation-page .row,  #recommendation-page .row > div {
+#recommendation-page, #recommendation-page .row > div {
     height: 100%;
+}
+
+#recommendation-page .row {
+    height: 80%;
 }
 
 #rec-header-container {
@@ -182,6 +244,7 @@ h1 {
     width: 275px;
     height: 275px;
     margin: 0;
+    object-fit: contain;
     display: inline-block;     
     vertical-align: middle;
 }
@@ -197,7 +260,7 @@ h1 {
     width: 100%;
     height: 25%;
     bottom: 0;
-    overflow: scroll; 
+    overflow-y: scroll; 
     border-top: 1px solid #ebe9e7;
     background: white;
 }
@@ -208,6 +271,12 @@ h1 {
     left: 0;
     right: 0;
     margin: .75%;
+    font-size: .16em;
+}
+
+#recs-and-btn {
+    height: 100%;
+    width: 100%;
 }
 
 #artist-recs {
@@ -217,7 +286,7 @@ h1 {
    width: 1000px;
    height: 500px;*/
     width: 98%;
-    height: 60%;
+    height: 70%;
     margin: 0 auto;
     text-align: center;
     
@@ -227,10 +296,6 @@ h1 {
     margin: 1% 0;
     position: relative;
     z-index: 0;
-}
-
-#generate-playlist-btn-container {
-    height: 30%;
 }
 
 #generate-playlist-btn {
@@ -260,9 +325,11 @@ h1 {
     background: rgba(0, 0, 0, 0);
     transition: background .4s;
     display: none;
+    z-index: 1;
   }
 
 #rec-modal {
+    font-size: 100px;
     position: absolute;
     top: 25px;  
     left: 50%;
@@ -270,13 +337,27 @@ h1 {
     z-index: 2;
     opacity: 0;
     background: white;
-    width: 960px;
-    height: 550px;
+    width: 873px;
+    height: 500px;
     border-radius: 5px;
     margin: 0 auto;
     overflow: auto;
     box-shadow: 0px 10px 68px 0px rgba(0,0,0,0.75);
 }
+
+#rec-modal br {
+    font-size: 0;
+}
+
+#rec-modal h2 {
+    font-size: .2em;
+}
+
+#rec-modal .col-7 {
+    font-size: 100px;
+}
+
+
 
 @media screen and (max-width: 1000px) {
     #rec-modal {
@@ -290,15 +371,47 @@ h1 {
     }
 }
 
-@media screen and (max-width: 700px) {
+@media screen and (max-width: 700px) and (min-height: 600px) {
+    .col-sm-9 {
+        width: 100%;
+    }
+    .col-sm-3 {
+        width: 100%;
+    }
+    #rec-modal {
+        width: 360px;
+        height: 600px;
+        font-size: 100px;
+    }
+    #rec-modal .col-7 {
+        font-size: 100px;
+        padding: 0 10px;
+    }
+ 
+   
+}
+
+@media screen and (max-width: 700px) and (max-height: 700px) {
+    .col-sm-9 {
+        width: 75%;
+    }
+    .col-sm-3 {
+        width: 25%;
+    }
     #rec-modal {
         width: 500px;
         height: 286px;
+        font-size: 75px;
     }
-
+    #rec-modal .col-7 {
+        font-size: 75px;
+    }
     .artist-img {
-        width: 100px;
-        height: 100px;
+        width: 75px;
+        height: 75px;
+    }
+    .rec-genre-list-container {
+        height: 50px!important;
     }
 }
 
@@ -318,28 +431,19 @@ h1 {
     overflow: hidden;
 }
 
-::-webkit-scrollbar {
-  width: 2px;
-  height: 2px;
-}
+
 ::-webkit-scrollbar-button {
   width: 0px;
   height: 0px;
 }
-::-webkit-scrollbar-thumb {
-  background: #000000;
-  border-radius: 50px;
-}
+
 ::-webkit-scrollbar-thumb:hover {
   background: #000000;
 }
 ::-webkit-scrollbar-thumb:active {
   background: #000000;
 }
-::-webkit-scrollbar-track {
-  background: #c4c4c4;
-  border-radius: 50px;
-}
+
 ::-webkit-scrollbar-track:hover {
   background: #c4c4c4;
 }
@@ -348,37 +452,145 @@ h1 {
   background: transparent;
 }
 
-#recommendation-col {
+::-webkit-scrollbar-track {
+    background: #c4c4c4;
+    border-radius: 50px;
+  }
+::-webkit-scrollbar-thumb {
+    background: #000000;
+    border-radius: 50px;
+}
+
+::-webkit-scrollbar {
+    width: 2px;
+    height: 2px;
+}
+::-webkit-scrollbar-track {
+    background: #c4c4c4;
+    border-radius: 50px;
+}
+
+#artist-recs::-webkit-scrollbar {
+    width: 20px;
+}
+
+#artist-recs::-webkit-scrollbar-track {
+    width: 10px;
+    border-left: 9px solid white;
+    border-right: 9px solid white;
+}
+
+#artist-recs::-webkit-scrollbar-thumb {
+    width: 10px;
+    border-left: 7px solid white;
+    border-right: 7px solid white;
+    border-radius: 7px;
+}
+
+
+#recommendation-col, #info-col {
     padding: 0;
+    position: relative;
 }
 
 .rec-genre-list-container {
+    overflow-y: auto;
+    height: 100px;
     width: 100%;
-    height: 50%;
+    margin-bottom: 10px;
+    font-size: .16em; 
 }
 
 .rec-genre-list {
-    text-transform: capitalize;    
+    margin: 0;
+    text-transform: capitalize;   
+    width: 100%;
+    height: 100%;
+}
+
+.song-preview-container {
+    position: relative;
+    padding: 0;
+    height: 100%;
+    width: 100%;
+    font-size: .16em;
+}
+
+.preview-clip {
+    width: 90%;
+    position: absolute;
+    top: 0;
+    left: 0;
 }
 
 #album-art-box {
     text-align: center;
-    height: 100%;
+    height: calc(100% - 100px);
     width: 100%;
     position: relative;
     overflow: hidden;
 }
 
-.album-art {
-    width: 90%;
+#album-art-frame {
+    width: 100%;
+    height: 100%;
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
+    bottom: 0;
     margin: auto;
     z-index: -1;
+    padding: 10px;
+}
+
+.album-art {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    height: 100%;
+    width: 100%;
+    object-fit: contain;
     opacity: 0;
     transition: opacity 1s;
+}
+
+@media screen and (max-height: 700px) {
+    #album-art-frame {
+        width: 70%!important;
+    }
+}
+
+@media screen and (max-height: 600px) {
+    #album-art-frame {
+        width: 55%!important;
+    }
+}
+
+@media screen and (max-height: 520px) {
+    #album-art-frame {
+        width: 45%!important;
+    }
+}
+
+@media screen and (max-height: 460px) {
+    #album-art-frame {
+        width: 35%!important;
+    }
+}
+
+@media screen and (max-height: 400px) {
+    #album-art-frame {
+        width: 25%!important;
+    }
+}
+
+@media screen and (max-height: 360px) {
+    #album-art-frame {
+        width: 15%!important;
+    }
 }
 
 .left-align {
@@ -388,9 +600,16 @@ h1 {
 @media screen and (max-width: 1150px) {
     .col-md-12 {
         width: 100%;
+
     }
     .col-md-0 {
         width: 0%;
         display: none!important;
+    }
+    #artist-recs input {
+        left: 7%;
+    }
+    #stats-page ul {
+        font-size: 100px!important;
     }
 }

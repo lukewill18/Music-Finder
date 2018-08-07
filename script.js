@@ -2,17 +2,13 @@ const lastfm = "69ea9630699c55e46ca0816adf440f44";
 let totalTracks;
 const url_re = new RegExp("^.*#access_token=(.*?)&token_type=.*$")
 
-function showAlert(alert, message) {
-    alert.css({"opacity": 1, "z-index": 1, "top": "5px"});
-    alert.text("Error: " + message);
-    setTimeout(function() {
-        alert.css({"opacity": 0, "z-index": 0, "top": "-500px"});
-    }, 4500);
-}
-
 function switchPage(toHide, toShow) {
     toHide.addClass("hidden");
     toShow.removeClass("hidden");
+}
+
+function switchPage2(toHide, toShow) {
+    //toHide.addClass("hidden");
 }
 
 function collectAllPlaylists(token) {
@@ -81,6 +77,23 @@ function getArtistPrevalence(tracks) {
             prevalence[artist_lower].count++;
     } 
     return prevalence; 
+}
+
+function getArtistImage(artist) {
+    return new Promise(function(resolve, reject) {
+        $.ajax({
+            url: "http://ws.audioscrobbler.com/2.0/?method=artist.getinfo&artist=" + artist + "&api_key=" + lastfm + "&format=json",
+            success: function(response) {
+
+                if(response.hasOwnProperty("error")) {
+                    resolve("https://image.freepik.com/free-icon/question-mark_318-52837.jpg");
+                    return;
+                } 
+                let img = response.artist.image.length > 4 ? response.artist.image[4]["#text"] : "https://image.freepik.com/free-icon/question-mark_318-52837.jpg";
+                resolve(img);
+            }
+        });
+    });
 }
 
 function getLastfmGenres(artist, genrePrevalence) { // used if artist is not in spotify library
@@ -226,6 +239,9 @@ function setAlbumArt(spotify_id, token, recs, artist) {
                     }
                 }
                 resolve();
+            },
+            error: function(response) {
+                reject(response);
             }
         });
     });
@@ -239,10 +255,17 @@ function setTopTrack(spotify_id, token, recs, artist) {
                 'Authorization': 'Bearer ' + token,
             },
             success: function(response) {
+                if(response.tracks[0] == undefined) {
+                    resolve(spotify_id);
+                    return;
+                }
                 let mostPopular = [];
                 getMostPopularTopTracks(response.tracks, mostPopular);
                 recs[artist].top_track = findBestTrack(mostPopular);
-                resolve();
+                resolve(spotify_id);
+            },
+            error: function(response) {
+                reject(response);
             }
         });
     });
@@ -251,7 +274,7 @@ function setTopTrack(spotify_id, token, recs, artist) {
 function setIDAndGenres(searchname, token, recs, artist) {
     return new Promise(function(resolve, reject) {
         $.ajax({
-            url: "https://api.spotify.com/v1/search?q=" + searchname + "&type=artist&limit=1",
+            url: "https://api.spotify.com/v1/search?q=" + searchname + "&type=artist&limit=20",
             headers: {
                 'Authorization': 'Bearer ' + token,
             },
@@ -261,29 +284,63 @@ function setIDAndGenres(searchname, token, recs, artist) {
                     resolve();
                     return;
                 }
-                recs[artist].spotify_id = response.artists.items[0].id;
-                recs[artist].genres = response.artists.items[0].genres;
+
+                let match = response.artists.items[0];
+                if(match.name != artist && match.name != searchname) {
+                    let try_again = response.artists.items.find(function(a) {
+                        return a.name == artist;
+                    });
+                    if(try_again != undefined) 
+                        match = try_again;
+                }
+                for(let i = 0; i < response.artists.items.length; ++i) {
+                    if(response.artists.items[i].name == artist) {
+                         match = response.artists.items[i];
+                         break;
+                    }
+                }
+                recs[artist].spotify_id = match.id;
+                recs[artist].genres = match.genres;
                 resolve(recs[artist].spotify_id);
+            },
+            error: function(response) {
+                reject(response);
             }
         }); 
     });
 }
 
 function getAdditionalArtistInfo(artist, token, recs) { //get album covers, display them 1 at a time on right on hover, slideshow
-    let searchname = artist.split(" ")[0].toLowerCase() == "the" ?  artist.slice(4) : artist;    
+    let searchname = artist.split(" ")[0].toLowerCase() == "the" ?  artist.slice(4) : artist;
     return new Promise(function(resolve, reject) {
         let p1 = setIDAndGenres(searchname, token, recs, artist);
+        p1.catch(function(msg) {
+            reject(msg);
+        });
         p1.then(function(spotify_id) {
-            if(spotify_id == undefined)
+            if(spotify_id == undefined) {
                 resolve();
-            else {
-                let promises = [];
-                promises.push(setTopTrack(spotify_id, token, recs, artist));
-                promises.push(setAlbumArt(spotify_id, token, recs, artist));
-                return Promise.all(promises);
             }
-        }).then(function() {
-            resolve();
+            else {
+                let p2 = setTopTrack(spotify_id, token, recs, artist);
+                p2.catch(function(msg) {
+                    reject(msg);
+                });
+                p2.then(function(spotify_id) {
+                    if(spotify_id == undefined) {
+                        resolve();
+                    }
+                    else {
+                        let p3 = setAlbumArt(spotify_id, token, recs, artist);
+                        p3.catch(function(msg) {
+                            reject(msg);
+                        });
+                        p3.then(function() {
+                            resolve();
+                        });
+                    }
+                });
+            }
         });
     });
 }
@@ -515,9 +572,10 @@ $(document).ready(function() {
     const pageHeader = $("#page-header");
     const pageText = $("#page-text");
     const modalContainer = recPage.find("#modal-container");
-    const artBox = recPage.find("#album-art-box");
+    const artBox = recPage.find("#album-art-frame");
     const recModal = modalContainer.find("#rec-modal");
     const closeModalBtn = recModal.find("#rec-modal-close");
+    let recOffset = 0;
     let playlists;
     let user;
     let token;
@@ -527,12 +585,48 @@ $(document).ready(function() {
     let genreOrder;
     let stats_loaded = false;
     let recs_loaded = false;
+    let recs_loading = false;
     let tracks = [];
     let artistRecs = {};
     let artistsToAdd = [];
     let current_rec_info;
     let current_art;
     let shuffle;
+    let showing_alert = false;
+
+    function showAlert(alert, message) {
+        showing_alert = true;
+        anime({
+            targets: '#alert',
+            opacity: {
+                value: 1,
+                duration: 700
+            },
+            top: {
+                value: "5px",
+                duration: 300
+            },
+            easing: "linear",
+        });
+    
+        //alert.css({"opacity": 1, "z-index": 1, "top": "5px"});
+        alert.text("Error: " + message);
+        setTimeout(function() {
+            anime({
+                targets: '#alert',
+                opacity: {
+                    value: 0,
+                    duration: 100
+                },
+                top: {
+                    value: "-500px",
+                    duration: 300
+                },
+                easing: "linear",
+            });
+            showing_alert = false;
+        }, 4500);
+    }
 
     let url_check = window.location.href.match(url_re);
     if(url_check != null) {
@@ -554,6 +648,7 @@ $(document).ready(function() {
         pageText.addClass("fullpage-text");
         pageHeader.addClass("hidden");
         switchPage(playlistPage, statsPage);
+        //switchPage2("#playlist-entry-page", "#stats-page");
     }
 
     function insertTopArtists(tracks) {
@@ -562,11 +657,25 @@ $(document).ready(function() {
         artistOrder = Object.keys(artistPrevalence).sort(function(a, b) {
             return artistPrevalence[b].count - artistPrevalence[a].count;
         });
-        for(let i = 0; i < artistOrder.length && i <= 10; ++i) {
-            template += `<li class="top-artist">${artistPrevalence[artistOrder[i]].display_name} (${(artistPrevalence[artistOrder[i]].count/tracks.length * 100).toFixed(2)}%)</li>`;
+
+        let image_promises = [];
+        for(let i = 0; i < artistOrder.length && i < 10; ++i) {
+            image_promises.push(getArtistImage(artistOrder[i]));
         }
-        topArtists.find(".loading").remove();
-        topArtists.append(template);
+        Promise.all(image_promises).then(function(images) {
+            for(let i = 0; i < artistOrder.length && i < 10; ++i) {
+                template += `<li class="top-artist">
+                                <div class="top-artist-img-container">
+                                    <img class="top-artist-img" src="${images[i]}">
+                                </div>
+                                <div class="top-artist-info">
+                                    ${artistPrevalence[artistOrder[i]].display_name} (${(artistPrevalence[artistOrder[i]].count/tracks.length * 100).toFixed(2)}%)
+                                </div>
+                            </li>`;
+            }
+            topArtists.find(".loading").remove();
+            topArtists.append(template);
+        });
     }
 
     function insertTopGenres(tracks) {
@@ -575,7 +684,7 @@ $(document).ready(function() {
         genreOrder = Object.keys(genrePrevalence).sort(function(a, b) {
             return genrePrevalence[b] - genrePrevalence[a];
         });
-        for(let i = 0; i < genreOrder.length && i <= 10; ++i) {
+        for(let i = 0; i < genreOrder.length && i < 10; ++i) {
             template += `<li class="top-genre">${genreOrder[i]} (${(genrePrevalence[genreOrder[i]]/tracks.length * 100).toFixed(2)}%)</li>`;
         }
         topGenres.find(".loading").remove();
@@ -605,10 +714,10 @@ $(document).ready(function() {
         let template = `<div class="rec-info-box hidden" id="info${i}">
                             <h2>${recOrder[i]}</h2>
                             <div class="row">
-                                <div class="col-5 artist-img-col">
+                                <div class="col-5 col-sm-3 artist-img-col">
                                     <img class="artist-img" src="${artistRecs[recOrder[i]].image}">
                                 </div>
-                                <div class="col-7 left-align">
+                                <div class="col-7 col-sm-9 left-align">
                                     <div class="rec-genre-list-container">`;
                                     if(artistRecs[recOrder[i]].genres.length > 0) {
                                         template += `<p class="rec-genre-list">Genres: ${artistRecs[recOrder[i]].genres.join(", ")}</p>`;
@@ -651,47 +760,57 @@ $(document).ready(function() {
         return template;
     }
 
-    function insertArtistRecs(artistRecs, token) {
+    function insertArtistRecs(artistRecs, token, num_recs) {
         let promises = [];
-        let li_template = `<li class="artist-rec centered"><input type="checkbox" id="check-all"></li><br>`;
+        let li_template = recOffset == 0? `<li class="artist-rec centered"><input type="checkbox" id="check-all"></li><br>` : ``;
         let modal_template  = ``;
         let side_art_template = ``;
         let recOrder = Object.keys(artistRecs).sort(function(a, b) {
             return artistRecs[b].match - artistRecs[a].match;
         });
-        for(let i = 0; i < recOrder.length && i < 50; ++i) {
+        for(let i = recOffset; i < recOrder.length && i < num_recs + recOffset; ++i) {
             promises.push(getAdditionalArtistInfo(recOrder[i], token, artistRecs));
         }
-        Promise.all(promises).then(function() {
-            for(let i = 0; i < recOrder.length && i < 50; ++i) {
-                let sortedSimilar = artistRecs[recOrder[i]].similarTo.sort(function(a, b) {
-                    return b.similarity - a.similarity;
-                });
-                artistRecs[recOrder[i]].info_id = "info" + i.toString();
-                li_template += `<li class="artist-rec centered"><input type="checkbox" class="rec-checkbox"><span class="rec-name">${recOrder[i]}</span></li>`;
-                modal_template += generateArtistModalTemplate(artistRecs, recOrder, i, sortedSimilar);
-                side_art_template += generateSideArtTemplate(artistRecs, recOrder, i);
-            }
-            artistRecList.find(".loader").remove();
-            artistRecList.append(li_template);
-            recModal.append(modal_template);
-            artBox.append(side_art_template);
-            let audio_clips = recModal.find(".preview-clip");
-            for(let i = 0; i < audio_clips.length; ++i) {
-                audio_clips[i].volume = .25;
-            }
-        });        
-        return Promise.all(promises);
+        return new Promise(function(resolve, reject) {
+            let all = Promise.all(promises);
+            all.catch(function(msg) {
+                reject(msg);
+            });
+            all.then(function() {
+                for(let i = recOffset; i < recOrder.length && i < num_recs + recOffset; ++i) {
+                    let sortedSimilar = artistRecs[recOrder[i]].similarTo.sort(function(a, b) {
+                        return b.similarity - a.similarity;
+                    });
+                    artistRecs[recOrder[i]].info_id = "info" + i.toString();
+                    li_template += `<li class="artist-rec centered"><input type="checkbox" class="rec-checkbox"><span class="rec-name">${recOrder[i]}</span></li>`;
+                    modal_template += generateArtistModalTemplate(artistRecs, recOrder, i, sortedSimilar);
+                    side_art_template += generateSideArtTemplate(artistRecs, recOrder, i);
+                }
+                artistRecList.find(".loader").remove();
+                artistRecList.append(li_template);
+                recModal.append(modal_template);
+                artBox.append(side_art_template);
+                let audio_clips = recModal.find(".preview-clip");
+                for(let i = 0; i < audio_clips.length; ++i) {
+                    audio_clips[i].volume = .25;
+                }
+                recOffset += num_recs;
+                resolve();
+            });        
+        });
     }
     
     function handleRecommendations() {
         let artistRecPromise = collectArtistRecs(artistPrevalence, token, artistRecs);
         artistRecPromise.then(function() {
             //console.log(artisRecs);
-            return insertArtistRecs(artistRecs, token);
-            
-        }).then(function() {
-            recs_loaded = true;
+            let insertPromise = insertArtistRecs(artistRecs, token, 30);
+            insertPromise.catch(function(msg) {
+                showAlert(alert, "Could not load recommendations, please refresh the page and try again");
+            });
+            insertPromise.then(function() {
+                recs_loaded = true;
+            });
         });
         //let genreRecs = collectGenreRecs(genrePrevalence);
     }
@@ -702,6 +821,9 @@ $(document).ready(function() {
         let playlistByName = findPlaylistWithName(playlists, playlist);
         if(playlistByName == null) 
             showAlert(alert, "Please enter a valid playlist name");
+        else if (playlistByName.tracks.total == 0) {
+            showAlert(alert, "Please choose a playlist with at least 1 song");
+        }
         else {
             user = playlistByName.owner.id;
             handleStatistics(user, playlistByName.id);
@@ -721,8 +843,10 @@ $(document).ready(function() {
         recModal.css("opacity", "0");
         artistRecList.find(".artist-rec").css("z-index", "0");
         let current_preview = current_rec_info.find(".preview-clip")[0];
-        current_preview.pause();
-        current_preview.currentTime = 0;
+        if(current_preview != undefined) {
+            current_preview.pause();
+            current_preview.currentTime = 0;
+        }
         current_rec_info.toggleClass("hidden");
         
     }
@@ -816,6 +940,10 @@ $(document).ready(function() {
     recPage.find("#generate-playlist-btn").click(function() {
         if(!recs_loaded) return;
         let checked = recPage.find(".rec-checkbox:checkbox:checked");
+        if(checked.length == 0) {
+            showAlert(alert, "No artists selected. Please check boxes of the artists that you want to add to the playlist.");
+            return;
+        }
         for(let i = 0; i < checked.length; ++i) {
             let name = $(checked[i]).siblings(".rec-name").text();
             if(artistRecs.hasOwnProperty(name)) {
@@ -834,6 +962,29 @@ $(document).ready(function() {
     finishPage.find("#playlist-link-btn").click(function() {
         if(playlistURL == undefined) return;
         window.open(playlistURL);
+    });
+
+
+    artistRecList.scroll(function() {
+        if(recs_loading || showing_alert) return;
+        let scroll_dist = $(this).scrollTop() + $(this).innerHeight();
+        if(scroll_dist + 100 > this.scrollHeight) {
+            recs_loading = true;
+            artistRecList.append(`<li><div class="loader"></li>`);
+            let insertPromise = insertArtistRecs(artistRecs, token, 20)
+            insertPromise.catch(function(msg) {
+                showAlert(alert, "Could not load recommendations, please wait a few seconds");
+                artistRecList.find(".loader").remove();
+                recs_loading = false;
+            });
+            insertPromise.then(function() {
+                recs_loading = false;
+            });
+        }
+    });
+
+    statsPage.scroll(function(e) {
+        console.log(e);
     });
 
 });
