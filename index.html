@@ -3,6 +3,7 @@
 <html>
     <head>
         <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width">
         <title>Music Finder</title>
         <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.2.0/css/all.css" integrity="sha384-hWVjflwFxL6sNzntih27bfxkr27PmbbK/iSvJ+a4+0owXq79v+lsFkW54bOGbiDQ" crossorigin="anonymous">
         <link rel="stylesheet" href="bootstrap.css">
@@ -11,8 +12,9 @@
     </head>
     <body>
         <div class="alert alert-danger" id="alert">ALERT</div>
+        
         <div id="prelogin-page">
-            <video autoplay muted loop>
+            <video autoplay muted loop id="background-video">
                 <source src="background.mp4" type="video/mp4">
             </video>
             <div class="centered center-screen">
@@ -24,59 +26,36 @@
             </div>
         </div>
         <div id="playlist-entry-page" class="hidden centered">
-            <div class="centered center-screen">
+            <div class="centered">
                 <h1 id="page-header">Music Finder</h1>
-                <form id="playlist-form">
-                    <label for="playlist">Enter the name of the Spotify playlist to analyze:</label>
-                    <input type="text" id="playlist-entry" placeholder="ex: super cool playlist 5" required>
-
-                    <button class="btn btn-offer" id="submit-btn">Submit</button>
-                </form>
+                
+                <p>Select the playlist you want to analyze below!</p>
+                <input type="text" id="playlist-entry" placeholder="Search for your playlist">
+                <div id="playlist-select-controls">
+                    <div id="playlist-select-box"></div>
+                    <div id="prev-playlist"><i class="fas fa-caret-left"></i></div>
+                    <div id="next-playlist"><i class="fas fa-caret-right"></i></div>   
+                </div> 
             </div>
         </div>
             <div id="stats-page" class="hidden centered">
-             <!--   <div id="background-container">
-                    <div class="background-box"></div>
-                    <div class="background-box"></div>
-                    <div class="background-box"></div>
-                    <div class="background-box"></div>
-                    <div class="background-box"></div>
-                    <div class="background-box"></div>
-                    <div class="background-box"></div>
-                    <div class="background-box"></div>
-                    <div class="background-box"></div>
-                    <div class="background-box"></div>
-                    <div class="background-box"></div>
-                    <div class="background-box"></div>
-                    <div class="background-box"></div>
-                    <div class="background-box"></div>
-                    <div class="background-box"></div>
-                    <div class="background-box"></div>
-                    <div class="background-box"></div>
-                    <div class="background-box"></div>
-                    <div class="background-box"></div>
-                    <div class="background-box"></div>
-                    <div class="background-box"></div>
-                    <div class="background-box"></div>
-                    <div class="background-box"></div>
-                    <div class="background-box"></div>
-                    <div class="background-box"></div>
-                    <div class="background-box"></div>
-                    <div class="background-box"></div>
-                </div>-->
                 <h1>Statistics</h1>
                     <div class="row">
-                        <div class="col-6 col-md-12">
+                        <div class="col-12">
                             <h2>Your playlist's top genres:</h2>
                             <ul id="top-genres">
                                 <li class="loading"><div class="loader"></div></li>
                             </ul>
                         </div>
-                        <div class="col-6 col-md-12">
+                    </div>
+                    <div class="row">
+                        <div class="col-12">
                             <h2>Your playlist's top artists:</h2>
                             <ul id="top-artists">
                                 <li class="loading"><div class="loader"></div>
                                 </li>
+                                <div class="row">
+                                </div>
                             </ul>
                         </div>
                     </div>
@@ -97,7 +76,7 @@
                         </div>
                         <div id="recs-and-btn">
                             <ul id="artist-recs">
-                                <div class="loader"></div>
+                                <li><div class="loader"></div></li>
                             </ul>
                             <button class="btn btn-offer" id="generate-playlist-btn">Generate Playlist</button>
                         </div>    
@@ -106,20 +85,13 @@
                         <h4>Click an artist's name to display information about them</h4>
                         <div id="album-art-box">
                             <div id="album-art-frame">
-                                
+
                             </div>
                         </div>
                     </div>
                 </div>
-                <!--
-                <div class="row">
-                    <div class="col-12">
-                        <h2>You should check out these genres:</h2>
-                    </div>
-                </div>-->
-                
             </div>
-            <div id="finish-page" class="hidden centered">
+            <div id="finish-page" class="hidden centered center-screen">
                 <h1>Your playlist has been created!</h1>
                 <button id="playlist-link-btn" class="btn btn-offer">Start Listening</button>
             </div>
@@ -127,7 +99,6 @@
 
         <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/2.2.0/anime.js"></script>
         <script src="https://code.jquery.com/jquery-3.3.1.js" integrity="sha256-2Kok7MbOyxpgUVvAk/HJ2jigOSYS2auK4Pfzbm7uH60=" crossorigin="anonymous"></script>
-       <!-- <script data-main="script" src="node_modules/requirejs/require.js"></script> -->
         <script src="script.js"></script>
     </body>
 </html>

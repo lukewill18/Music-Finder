@@ -42,9 +42,9 @@ html, body {
     font-size: 20px;
 }
 
-#prelogin-page video{
+#background-video{
     z-index: -1;
-    position: absolute;
+    position: fixed;
     top: 0;
     left: 0;
     width: 100%;
@@ -78,6 +78,173 @@ h1 {
     display: none;
 }
 
+#playlist-entry-page {
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+}
+
+#playlist-select-controls {
+    width: 800px;
+    height: 700px;
+    margin: 0 auto;
+    margin-top: 30px;
+    position: relative;
+}
+
+#prev-playlist, #next-playlist {
+    position: absolute;
+    top: 41.5%;
+    font-size: 100px;
+    cursor: pointer;
+}
+
+#prev-playlist {
+    left: 0;
+}
+
+#next-playlist {
+    right: 0;
+}
+
+#playlist-select-box {
+    border: 1px solid black;
+    overflow: hidden;
+    width: 700px;
+    height: 700px;
+    margin: 0 auto;    
+    position: relative;
+}
+
+@media screen and (max-width: 800px) {
+    #playlist-entry-page {
+        padding-top: 50px;
+    }
+
+    #playlist-select-box {
+        width: 600px;
+        height: 600px;
+    }
+
+    #playlist-select-controls {
+        width: 700px;
+    }
+    #prev-playlist, #next-playlist {
+        top: 34%;
+    }
+}
+
+@media screen and (max-width: 700px) {
+    #playlist-entry-page {
+        padding-top: 100px;
+    }
+
+    #playlist-select-box {
+        width: 500px;
+        height: 500px;
+    }
+
+    #playlist-select-controls {
+        width: 600px;
+    }
+    #prev-playlist, #next-playlist {
+        top: 27%;
+    }
+
+    .playlist-visual {
+        font-size: 80px!important;
+    }
+}
+
+@media screen and (max-width: 600px) {
+    #playlist-entry-page {
+        padding-top: 150px;
+    }
+
+    #playlist-select-box {
+        width: 400px;
+        height: 400px;
+    }
+
+    #playlist-select-controls {
+        width: 500px;
+    }
+    #prev-playlist, #next-playlist {
+        top: 20%;
+    }
+}
+
+@media screen and (max-width: 500px) {
+    #playlist-select-box {
+        width: 300px;
+        height: 300px;
+    }
+
+    #playlist-select-controls {
+        width: 400px;
+    }
+    #prev-playlist, #next-playlist {
+        top: 13%;
+    }
+}
+
+@media screen and (max-width: 400px) {
+    #playlist-select-box {
+        width: 200px;
+        height: 200px;
+    }
+
+    #playlist-select-controls {
+        width: 300px;
+    }
+    #prev-playlist, #next-playlist {
+        top: 6%;
+    }
+    .playlist-visual {
+        font-size: 60px!important;
+    }
+}
+
+.playlist-visual {
+    font-size: 100px;
+    left: 100%;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    cursor: pointer;
+}
+
+#playlist-select-box:hover {
+    box-shadow: -1px 3px 31px 0px rgba(255,255,0,1);
+}
+
+.playlist-visual-active {
+    left: 0;
+}
+
+.playlist-name {
+    font-size: .24em;
+    z-index: 1;
+    position: absolute;
+    bottom: 5%;
+    left: 0;
+    right: 0;
+    font-weight: bold;
+    color: white;
+    text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;
+
+    
+}
+
+.playlist-img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+}
+
 #stats-page {
     height: 100%;
     width: 100%;
@@ -105,7 +272,6 @@ h1 {
     font-size: 100px;
     margin: 0;
     height: 50%;
-    overflow-y: auto;
 }
 
 .top-genre {
@@ -113,20 +279,45 @@ h1 {
 }
 
 #top-artists {
-    font-size: 100px;
+    margin: 0 10%!important;
+}
+
+.top-artist-col {
+    width: 20%;
+    padding: 0!important;
+}
+
+@media screen and (max-width: 1460px) {
+    .top-artist-col {
+        width: 25%;
+    }
+}
+
+@media screen and (max-width: 1200px) {
+    .top-artist-col {
+        width: 33%;
+    }
+}
+
+@media screen and (max-width: 900px) {
+    .top-artist-col {
+        width: 50%;
+    }
+}
+
+@media screen and (max-width: 600px) {
+    .top-artist-col {
+        width: 100%;
+    }
 }
 
 .top-artist {
+    font-size: 100px;
     display: inline-block;
-    width: 20%;
-    height: 100%;
+    width: 230px;
+    height: 230px;
     text-align: center;
-}
-
-@media screen and (max-width: 1550px) {
-    .top-artist {
-        width: 25%;
-    }
+    position: relative;
 }
 
 .top-artist-img-container {
@@ -135,6 +326,7 @@ h1 {
     border-radius: 100%;
     overflow: hidden;
     margin: 0 auto;
+    
 }
 
 .top-artist-img {
@@ -144,7 +336,14 @@ h1 {
 }
 
 .top-artist-info {
-    font-size: .16em;
+    font-size: .18em;
+    width: 100%;
+    height: 70px;
+    word-wrap: break-word;
+    margin: 0;
+    position: absolute;
+    bottom: 0;
+    overflow: auto;
 }
 
 @media screen and (max-height: 700px) {
@@ -162,7 +361,7 @@ h1 {
 }
 
 #recommendation-btn {
-    margin-top: 10px;
+    margin: 10px 0;
 }
 
 .loader {
@@ -178,24 +377,6 @@ h1 {
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
-}
-
-#background-container {
-    position: absolute;
-    top: -150px;
-    left: -150px;
-    height: 100% + 151px;
-    width: 100% + 151px;
-    margin: 0;
-    font-size: 0;
-}
-
-.background-box {
-    height: 150px;
-    width: 150px;
-    border: 1px solid black;
-    margin: 0;
-    display: inline-block;
 }
 
 .very-close-match {
@@ -218,6 +399,7 @@ h1 {
     width: 100%;
     min-width: 360px;
     overflow: hidden;
+    font-size: 100px;
     /*font-size: 100px;*/
     
 }
@@ -226,8 +408,9 @@ h1 {
     height: 100%;
 }
 
-#recommendation-page .row {
+#recommendation-page > .row {
     height: 80%;
+    background-color: white;
 }
 
 #rec-header-container {
@@ -252,6 +435,10 @@ h1 {
 .rec-name {
     font-size: 24px;
     cursor: pointer;
+    max-width: 73%;
+    margin: 0 auto;
+    display: inline-block;
+    font-weight: lighter;
 }
 
 .similar-to-box {
@@ -289,13 +476,33 @@ h1 {
     height: 70%;
     margin: 0 auto;
     text-align: center;
-    
 }
 
 .artist-rec {
-    margin: 1% 0;
+    padding: 1% 0;
     position: relative;
     z-index: 0;
+}
+
+.push-back {
+    z-index: 0!important;
+}
+
+.artist-rec:not(#check-all-row):hover, .shadow {
+    z-index: 1;
+    box-shadow: 3px 5px 33px 0px rgba(0,0,0,0.75);
+}
+
+.artist-rec:nth-child(odd) {
+    background: #f2f2f2;
+}
+
+.artist-rec:nth-child(even) {
+    background: white;
+}
+
+.artist-rec:nth-child(1) {
+    background: white!important;
 }
 
 #generate-playlist-btn {
@@ -305,10 +512,9 @@ h1 {
 
 #artist-recs input {
     position: absolute;
-    top: 5.5px;
+    top: 28%;
     left: 10%;
     margin: 0;
-    vertical-align: middle;
     width: 20px;
     height: 20px;
     background-color: white;
@@ -325,7 +531,7 @@ h1 {
     background: rgba(0, 0, 0, 0);
     transition: background .4s;
     display: none;
-    z-index: 1;
+    z-index: 2;
   }
 
 #rec-modal {
@@ -334,7 +540,7 @@ h1 {
     top: 25px;  
     left: 50%;
     transform: translateX(-50%);
-    z-index: 2;
+    z-index: 3;
     opacity: 0;
     background: white;
     width: 873px;
@@ -379,19 +585,19 @@ h1 {
         width: 100%;
     }
     #rec-modal {
-        width: 360px;
-        height: 600px;
-        font-size: 100px;
+        width: 360px!important;
+        height: 550px!important;
+        font-size: 100px!important;
     }
     #rec-modal .col-7 {
-        font-size: 100px;
-        padding: 0 10px;
+        font-size: 100px!important;
+        padding: 0 10px!important;
     }
  
    
 }
 
-@media screen and (max-width: 700px) and (max-height: 700px) {
+@media screen and (max-width: 700px) and (max-height: 600px) {
     .col-sm-9 {
         width: 75%;
     }
@@ -412,6 +618,37 @@ h1 {
     }
     .rec-genre-list-container {
         height: 50px!important;
+    }
+    .rec-genre-list {
+        text-align: center;
+    }
+}
+
+@media screen and (max-width: 550px) and (min-height: 520px) {
+    .col-sm-9 {
+        width: 100%;
+    }
+    .col-sm-3 {
+        width: 100%;
+    }
+    #rec-modal {
+        width: 350px;
+        height: 400px;
+        font-size: 75px;
+    }
+    #rec-modal .col-7 {
+        font-size: 75px;
+    }
+    .rec-genre-list-container {
+        height: 80px!important;
+    }
+}
+
+
+
+@media screen and (max-width: 550px) {
+    #recommendation-page h1 {
+        font-size: .4em;
     }
 }
 
@@ -487,7 +724,6 @@ h1 {
     border-radius: 7px;
 }
 
-
 #recommendation-col, #info-col {
     padding: 0;
     position: relative;
@@ -540,7 +776,7 @@ h1 {
     right: 0;
     bottom: 0;
     margin: auto;
-    z-index: -1;
+    z-index: 0;
     padding: 10px;
 }
 
