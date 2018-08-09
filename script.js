@@ -44,7 +44,7 @@ function makeTrackRequest(user, playlist, offset, token, tracks) {
             },
             success: function(response) {
                 let relevant = response.items.map(function(i) {
-                    return {"name": i.track.name, "artist": i.track.artists[0].name, "artist_id": i.track.artists[0].id};
+                    return {"name": i.track.name, "artist": i.track.artists[0].name, "artist_id": i.track.artists[0].id, "images": i.track.album.images};
                 });
                 tracks = tracks.concat(relevant);
                 resolve(tracks);
@@ -559,10 +559,12 @@ async function collectAllLyrics(tracks) {
 
 $(document).ready(function() {
     const body = $("body");
+    const backgroundVideo = $("#background-video");
     const playlistPage = $("#playlist-entry-page");
     const nextPlaylist = playlistPage.find("#next-playlist");
     const prevPlaylist = playlistPage.find("#prev-playlist");
     const playlistImageBox = playlistPage.find("#playlist-select-box");
+    const noResultsVisual = playlistImageBox.find(".no-results");
     const input = playlistPage.find("#playlist-entry");
     const alert = $("#alert");
     const statsPage = $("#stats-page");
@@ -571,13 +573,12 @@ $(document).ready(function() {
     const topArtists = statsPage.find("#top-artists");
     const topGenres = statsPage.find("#top-genres");
     const artistRecList = recPage.find("#artist-recs");
-    const pageHeader = $("#page-header");
-    const pageText = $("#page-text");
     const modalContainer = recPage.find("#modal-container");
     const artBox = recPage.find("#album-art-frame");
     const recModal = modalContainer.find("#rec-modal");
     const closeModalBtn = recModal.find("#rec-modal-close");
     let recOffset = 0;
+    let recs_background_loaded = false;
     let playlists;
     let visuals;
     let current_visual = 0;
@@ -633,7 +634,7 @@ $(document).ready(function() {
         }, 4500);
     }
 
-    function filter_visuals(valid_playlists) {
+    function filter_visuals(valid_playlists, search_phrase) {
         let toShow = [];
         for(let i = 0; i < valid_playlists.length; ++i) {
             toShow.push(playlistImageBox.find(valid_playlists[i])[0]);
@@ -642,10 +643,18 @@ $(document).ready(function() {
         $(visuals[current_visual]).addClass("hidden");
         visuals = toShow;
         if(toShow.length > 0) {
+            noResultsVisual.addClass("hidden");
+            noResultsVisual.removeClass("playlist-visual-active");
             $(toShow[0]).addClass("playlist-visual-active");
             $(toShow[0]).removeClass("hidden");
             $(toShow[0]).css("left", 0);
             current_visual = 0;
+        }
+        else {
+            current_visual = -1;
+            noResultsVisual.removeClass("hidden");
+            noResultsVisual.addClass("playlist-visual-active");
+            noResultsVisual.children("#invalid-playlist-name").text(search_phrase);
         }
     }
     
@@ -708,14 +717,25 @@ $(document).ready(function() {
     }
 
     playlistImageBox.click(function() {
+        if(moving_visual) return;
         let active = $(this).find(".playlist-visual-active");
         if(active.length == 0) return;
         let id = active[0].id;
         let playlist = playlists[parseInt(id.slice(id.length - 1))]
         user = playlist.owner.id;
-        console.log(playlist);
         totalTracks = playlist.tracks.total;
         handleStatistics(user, playlist.id);
+    });
+
+    playlistImageBox.mouseenter(function() {
+        if(current_visual > -1) {
+            $(this).addClass("glow");
+        }
+    });
+    playlistImageBox.mouseleave(function() {
+        if(current_visual > -1) {
+            $(this).removeClass("glow");
+        }
     });
 
     let url_check = window.location.href.match(url_re);
@@ -749,14 +769,16 @@ $(document).ready(function() {
             for(let i = 0; i < artistOrder.length && i < 10; ++i) {
                 template += `
                             <div class="top-artist-col">
-                                <li class="top-artist">
-                                    <div class="top-artist-img-container">
-                                        <img class="top-artist-img" src="${images[i]}">
-                                    </div>
-                                    <p class="top-artist-info">
-                                        ${artistPrevalence[artistOrder[i]].display_name} <br>(${(artistPrevalence[artistOrder[i]].count/tracks.length * 100).toFixed(2)}%)
-                                    </p>
-                                </li>
+                                <div class="text-background">
+                                    <li class="top-artist">
+                                        <div class="top-artist-img-container">
+                                            <img class="top-artist-img" src="${images[i]}">
+                                        </div>
+                                        <p class="top-artist-info">
+                                            ${artistPrevalence[artistOrder[i]].display_name} <br>(${(artistPrevalence[artistOrder[i]].count/tracks.length * 100).toFixed(2)}%)
+                                        </p>
+                                    </li>
+                                </div>
                             </div>`;
                             
             }
@@ -772,22 +794,45 @@ $(document).ready(function() {
             return genrePrevalence[b] - genrePrevalence[a];
         });
         for(let i = 0; i < genreOrder.length && i < 10; ++i) {
-            template += `<li class="top-genre">${genreOrder[i]} (${(genrePrevalence[genreOrder[i]]/tracks.length * 100).toFixed(2)}%)</li>`;
+            template += `<div class="text-background"><li class="top-genre">${genreOrder[i]} (${(genrePrevalence[genreOrder[i]]/tracks.length * 100).toFixed(2)}%)</li></div>`;
         }
         topGenres.find(".loading").remove();
         topGenres.append(template);
         stats_loaded = true;
     }
 
+    function setStatsPageBackground() {
+        let img_index = tracks.length >= 100 ? 1 : 0;
+        let all_images = tracks.filter(function(t) {
+            return t.images[img_index] != undefined;
+        }).map(function(t) {
+            return t.images[img_index].url;
+        });
+        
+        let images = new Set(all_images);
+        let i = 0;
+        let temp = ``;
+        while(i < 200) {
+            for(let image of images) {           
+                if(i > 199) break;
+                temp += `<div class="stats-background-box">
+                            <img class="stats-background-img" src=${image}>
+                        </div>`
+                ++i;
+            }
+        }
+        statsPage.find("#stats-background").append(temp);
+    }
+
     function handleStatistics(user, playlist) {
         switchPage(playlistPage, statsPage);
-        
+        backgroundVideo.addClass("hidden");
         let trackPromise = collectAllTracks(user, playlist, token, tracks);
         trackPromise.then(function(track_blocks) {
             for(let i = 0; i < track_blocks.length; ++i) {
                 tracks = tracks.concat(track_blocks[i]);
             }
-            console.log(tracks);
+            setStatsPageBackground();
             artistPrevalence = getArtistPrevalence(tracks);
             //console.log(artistPrevalence);
             insertTopArtists(tracks);
@@ -799,7 +844,33 @@ $(document).ready(function() {
 
     }
 
-    function generateArtistModalTemplate(artistRecs, recOrder, i, sortedSimilar) {
+
+    function setRecsBackground(recOrder, num_recs) {
+        let images = [];
+        let total_length = 0;
+        for(let i = 0; i < num_recs; ++i) {
+            total_length += artistRecs[recOrder[i]].album_art.length;
+        }
+        let j = 0;
+        while(images.length < 200 && images.length < total_length) {
+            for(let i = 0; i < num_recs; ++i) {
+                let art = artistRecs[recOrder[i]].album_art[j];
+                if(art != undefined)
+                    images.push(art);
+                if(images.length >= 200) break;
+            }
+            ++j;
+        }
+        let temp = ``;
+        for(let i = 0; i < images.length; ++i) {
+            temp += `<div class="recs-background-box"><img src="${images[i]}" class="recs-background-img"></div>`;
+        }
+        recPage.find("#recs-background").append(temp);
+        recs_background_loaded = true;
+
+    }
+
+    function generateArtistModalTemplate(artistRecs, recOrder, i, sortedSimilar) {  
         let template = `<div class="rec-info-box hidden" id="info${i}">
                             <h2>${recOrder[i]}</h2>
                             <div class="row">
@@ -843,7 +914,7 @@ $(document).ready(function() {
         artistRecs[recOrder[i]].art_id = "art" + i.toString();
         let art = artistRecs[recOrder[i]].album_art;
         for(let j = 0; j < art.length; ++j) {
-            template += `<img class="album-art" src="${art[j]}">`
+            template += `<img class="album-art" src="${art[j]}" draggable="false">`
         }
         template += `</div>`
         return template;
@@ -851,12 +922,14 @@ $(document).ready(function() {
 
     function insertArtistRecs(artistRecs, token, num_recs) {
         let promises = [];
-        let li_template = recOffset == 0? `<li class="artist-rec centered" id="check-all-row"><input type="checkbox" id="check-all"></li><br>` : ``;
+        let li_template = recOffset == 0? `<li class="artist-rec centered" id="check-all-row"><input type="checkbox" id="check-all"></li>` : ``;
         let modal_template  = ``;
         let side_art_template = ``;
         let recOrder = Object.keys(artistRecs).sort(function(a, b) {
             return artistRecs[b].match - artistRecs[a].match;
         });
+        
+
         for(let i = recOffset; i < recOrder.length && i < num_recs + recOffset; ++i) {
             promises.push(getAdditionalArtistInfo(recOrder[i], token, artistRecs));
         }
@@ -866,12 +939,26 @@ $(document).ready(function() {
                 reject(msg);
             });
             all.then(function() {
-                for(let i = recOffset; i < recOrder.length && i < num_recs + recOffset; ++i) {
+                if(!recs_background_loaded) 
+                    setRecsBackground(recOrder, num_recs);
+                let check_all = recPage.find("#check-all");
+                let pre_checked;
+                if(check_all.length < 1)
+                    pre_checked = false;
+                else   
+                    pre_checked = check_all[0].checked;
+                
+                    for(let i = recOffset; i < recOrder.length && i < num_recs + recOffset; ++i) {
                     let sortedSimilar = artistRecs[recOrder[i]].similarTo.sort(function(a, b) {
                         return b.similarity - a.similarity;
                     });
                     artistRecs[recOrder[i]].info_id = "info" + i.toString();
-                    li_template += `<li class="artist-rec centered"><input type="checkbox" class="rec-checkbox"><p class="rec-name">${recOrder[i]}</p></li>`;
+                    
+                    li_template += `<li class="artist-rec centered"><input type="checkbox" class="rec-checkbox"`
+                    if(pre_checked) {
+                        li_template += ` checked`
+                    }
+                    li_template += `><p class="rec-name">${recOrder[i]}</p></li>`;
                     modal_template += generateArtistModalTemplate(artistRecs, recOrder, i, sortedSimilar);
                     side_art_template += generateSideArtTemplate(artistRecs, recOrder, i);
                 }
@@ -912,7 +999,7 @@ $(document).ready(function() {
                 valid_playlists.push("#visual" + i.toString());
             }
         }
-        filter_visuals(valid_playlists);
+        filter_visuals(valid_playlists, str);
     });
 
     statsPage.find("#recommendation-btn").click(function() {
@@ -955,7 +1042,7 @@ $(document).ready(function() {
 
     let backgroundAnimation = anime({
         targets: '#modal-container',
-        background: "rgba(0, 0, 0, .4)",
+        backgroundColor: "rgba(0, 0, 0, .4)",
         duration: 250
     });
 
@@ -972,6 +1059,17 @@ $(document).ready(function() {
         
         modalAnimation.restart();
         backgroundAnimation.restart();
+    });
+
+    recPage.on("click", ".artist-rec", function(e) {
+        if(e.target == this) {
+            let checkbox = $(this).children("input")[0];
+            if(checkbox != undefined) {
+                $(checkbox).prop("checked", !checkbox.checked);
+                if(checkbox.id == "check-all") 
+                    recPage.find(".rec-checkbox").prop("checked", checkbox.checked);
+            }
+        }
     });
 
     function shuffle_art(album_art) {
@@ -1044,6 +1142,7 @@ $(document).ready(function() {
         urlPromise.then(function(url) {
             playlistURL = url;
             switchPage(recPage, $("#finish-page"));
+            backgroundVideo.removeClass("hidden");
         });
     });
 
