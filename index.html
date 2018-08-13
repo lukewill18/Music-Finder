@@ -17,7 +17,7 @@
             <source src="background.mp4" type="video/mp4">
         </video>
 
-        <div id="prelogin-page">
+        <div id="prelogin-page" class="shown">
             
             <div class="centered center-screen">
                 <h1 id="page-header">Music Finder</h1>
@@ -33,6 +33,7 @@
                 <input type="text" id="playlist-entry" placeholder="Search for your playlist...">
                 <div id="playlist-select-controls">
                     <div id="playlist-select-box">
+                        <div id="playlist-loader" class="loader"></div>
                         <div class="no-results hidden">
                             <p id="no-results-msg">No playlists found containing "<p id="invalid-playlist-name"></p>"</p>
                         </div>
@@ -43,8 +44,7 @@
             
         </div>
             <div id="stats-page" class="hidden centered">
-                <div id="stats-background">
-                </div>
+                <div id="stats-background"></div>
                     <h1><span class="text-background">Statistics</span></h1>
                     <div class="row">
                         <div class="col-12">
@@ -66,7 +66,6 @@
                         </div>
                     </div>
                 <button class="btn btn-offer" id="recommendation-btn">Show Recommendations</button>
-                
             </div>
 
             <div id="recommendation-page" class="hidden centered">
@@ -84,7 +83,8 @@
                         </div>
                         <div id="recs-and-btn">
                             <ul id="artist-recs">
-                                <li><div class="loader"></div></li>
+                                <li class="loading"><div class="loader"></div></li>
+                                <li class="artist-rec centered hidden" id="check-all-row"><input type="checkbox" id="check-all"></li>
                             </ul>
                             <button class="btn btn-offer" id="generate-playlist-btn">Generate Playlist</button>
                         </div>    
@@ -105,6 +105,7 @@
             </div>
         
 
+        <script src="https://dl.dropboxusercontent.com/s/ll11ftru2az384q/string16.min.js?dl=0"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/2.2.0/anime.js"></script>
         <script src="https://code.jquery.com/jquery-3.3.1.js" integrity="sha256-2Kok7MbOyxpgUVvAk/HJ2jigOSYS2auK4Pfzbm7uH60=" crossorigin="anonymous"></script>
         <script src="script.js"></script>
