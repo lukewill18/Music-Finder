@@ -30,7 +30,42 @@
         <div id="playlist-entry-page" class="hidden centered">
                 <h1 id="page-header">Music Finder</h1>
                 <h3>Select the playlist you want to analyze below!</h3>
+                <div id="most-listened-modal-container" class="modal-container">
+                    <div id="most-listened-modal" class="modal">
+                        <i class="fas fa-times modal-close" id="most-listened-modal-close"></i>
+                        <h5>Settings</h5>
+                        <form id="most-listened-settings">
+                            <div class="row" id="timerange-settings">
+                                <h6>Time Range</h6>
+                                <div class="radio-btn-and-label">
+                                    <label>
+                                        <input type="radio" name="timerange" id="short_term">
+                                        Short Term (~last 4 weeks)
+                                    </label>
+                                </div>  
+                                <div class="radio-btn-and-label">
+                                    <label>
+                                        <input type="radio" name="timerange" id="medium_term" checked>
+                                        Medium Term (~last 6 months)
+                                    </label>
+                                </div>
+                                <div class="radio-btn-and-label">
+                                    <label>
+                                        <input type="radio" name="timerange" id="long_term">
+                                        Long Term (several years)
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="row" id="num-artist-settings">
+                                <h6>Number of Artists</h6>
+                                <input type="number" min="10" value="25" max="50" id="num-artists">
+                            </div>
+                            <button class="btn btn-info" id="submit-settings-btn">OK</button>
+                        </form> 
+                    </div>
+                </div>
                 <input type="text" id="playlist-entry" placeholder="Search for your playlist...">
+                <button id="use-most-listened-btn" class="btn btn-offer">Use your most-listened artists instead</button>
                 <div id="playlist-select-controls">
                     <div id="playlist-select-box">
                         <div id="playlist-loader" class="loader"></div>
@@ -41,14 +76,14 @@
                     <div id="prev-playlist"><i class="fas fa-caret-left"></i></div>
                     <div id="next-playlist"><i class="fas fa-caret-right"></i></div>   
                 </div> 
-            
+                
         </div>
             <div id="stats-page" class="hidden centered">
                 <div id="stats-background"></div>
                     <h1><span class="text-background">Statistics</span></h1>
                     <div class="row">
                         <div class="col-12">
-                            <h2><span class="text-background">Your playlist's top genres:</span></h2>
+                            <h2><span class="text-background" id="top-genres-header">Your Playlist's Top Genres</span></h2>
                             <ul id="top-genres">
                                 <li class="loading"><div class="loader"></div></li>
                             </ul>
@@ -56,7 +91,7 @@
                     </div>
                     <div class="row">
                         <div class="col-12">
-                            <h2><span class="text-background">Your playlist's top artists:</span></h2>
+                            <h2><span class="text-background" id="top-artists-header">Your Playlist's Top Artists</span></h2>
                             <ul id="top-artists">
                                 <li class="loading"><div class="loader"></div>
                                 </li>
@@ -71,9 +106,9 @@
             <div id="recommendation-page" class="hidden centered">
                 <div id="recs-background"></div>
                 <h1><span class="text-background">Recommendations</span></h1>
-                <div id="modal-container">
-                    <div id="rec-modal">
-                        <i class="fas fa-times" id="rec-modal-close"></i>
+                <div id="rec-modal-container" class="modal-container">
+                    <div id="rec-modal" class="modal">
+                        <i class="fas fa-times modal-close" id="rec-modal-close"></i>
                     </div>
                 </div>
                 <div class="row">

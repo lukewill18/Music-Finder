@@ -52,7 +52,7 @@ html, body {
     object-fit: cover;
 }
 
-#login-btn, #playlist-link-btn {
+#login-btn, #playlist-link-btn, #use-most-listened-btn {
     background-color: #1db954;
     border: 1px solid white;
 }
@@ -84,6 +84,60 @@ h1 {
     padding-top: 0;
     color: white;
     text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;
+}
+
+#use-most-listened-btn {
+    margin-left: 10px;
+    margin-top: 10px;
+}
+
+@media screen and (max-width: 387px) {
+    #use-most-listened-btn {
+        margin-left: 0;
+    }
+}
+
+#most-listened-modal {
+    text-shadow: none;
+    color: white;
+    font-size: 0;
+    background-color: rgba(0, 0, 0, 1);
+    border: 1px solid white;
+}
+
+#most-listened-settings {
+    margin-top: 20px;
+}
+
+#submit-settings-btn {
+    margin-top: 100px;
+    margin-bottom: 10px;
+}
+
+#timerange-settings {
+    padding-left: 10px;
+    padding-right: 10px;
+    position: relative;
+}
+
+.radio-btn-and-label {
+    font-size: 0;
+    margin-bottom: 15px;
+}
+
+#most-listened-modal label {
+    font-size: 18px;
+    float: left;
+}
+
+#most-listened-modal h5 {
+    font-size: 40px;
+    margin: 0;
+}
+
+#most-listened-modal h6 {
+    font-size: 24px;
+    margin: 0;
 }
 
 #playlist-entry-page h3 {
@@ -454,12 +508,6 @@ h1 {
     overflow: auto;
 }
 
-@media screen and (max-height: 700px) {
-    #stats-page ul {
-        font-size: 80px;
-    }
-}
-
 #stats-page ul .top-genre {
     text-transform: capitalize;
 }
@@ -675,7 +723,7 @@ h1 {
     background-color: white;
 }
 
-#modal-container {
+.modal-container {
     height: 150%;
     width: 100%;
     position: fixed;
@@ -689,7 +737,7 @@ h1 {
     z-index: 2;
   }
 
-#rec-modal {
+.modal {
     font-size: 100px;
     position: absolute;
     top: 25px;  
@@ -718,12 +766,14 @@ h1 {
     font-size: 100px;
 }
 
-
-
 @media screen and (max-width: 1000px) {
-    #rec-modal {
+    .modal {
         width: 700px;
         height: 401px;
+    }
+
+    #submit-settings-btn {
+        margin-top: 30px;
     }
 
     .artist-img {
@@ -739,7 +789,7 @@ h1 {
     .col-sm-3 {
         width: 100%;
     }
-    #rec-modal {
+    .modal {
         width: 360px!important;
         height: 550px!important;
         font-size: 100px!important;
@@ -759,7 +809,7 @@ h1 {
     .col-sm-3 {
         width: 25%;
     }
-    #rec-modal {
+    .modal {
         width: 500px;
         height: 286px;
         font-size: 75px;
@@ -786,7 +836,7 @@ h1 {
     .col-sm-3 {
         width: 100%;
     }
-    #rec-modal {
+    .modal {
         width: 350px;
         height: 400px;
         font-size: 75px;
@@ -807,7 +857,7 @@ h1 {
     }
 }
 
-#rec-modal-close {
+.modal-close {
     font-size: 20px;
     position: absolute;
     margin: 0;
