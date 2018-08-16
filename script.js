@@ -203,6 +203,14 @@ function getSpotifyGenres(artists_with_id, artistPrevalence, promises, genrePrev
             if(axios.isCancel(thrown)) {
                 reject("cancelled");
             }
+            else {
+                setTimeout(function() {
+                    let retry = getSpotifyGenres(artists_with_id, artistPrevalence, promises, genrePrevalence, token);
+                    retry.then(function() {
+                        resolve();
+                    });
+                }, 3000)
+            }
         });
     });
 }
@@ -294,7 +302,12 @@ function setAlbumArt(spotify_id, token, recs, artist) {
                 resolve();
             },
             error: function(response) {
-                reject(response);
+                setTimeout(function() {
+                    let retry = setAlbumArt(spotify_id, token, recs, artist);
+                    retry.then(function() {
+                        resolve();
+                    });
+                }, 3000);
             }
         });
     });
@@ -318,7 +331,12 @@ function setTopTrack(spotify_id, token, recs, artist) {
                 resolve(spotify_id);
             },
             error: function(response) {
-                reject(response);
+                setTimeout(function() {
+                    let retry = setTopTrack(spotify_id, token, recs, artist);
+                    retry.then(function(sid) {
+                        resolve(sid);
+                    });
+                }, 3000);
             }
         });
     });
@@ -362,7 +380,12 @@ function setIDAndGenres(searchname, token, recs, artist) {
                 resolve(recs[artist].spotify_id);
             },
             error: function(response) {
-                reject(response);
+                setTimeout(function() {
+                    let retry = setIDAndGenres(searchname, token, recs, artist);
+                    retry.then(function() {
+                        resolve();
+                    })
+                }, 3000);
             }
         }); 
     });
@@ -435,6 +458,14 @@ function getSpotifyRecs(artist, artistPrevalence, token, recname, recs) {
         }).catch(function(thrown) {
             if(axios.isCancel(thrown)) {
                 reject("cancelled");
+            }
+            else {
+                setTimeout(function() {
+                    let retry = getSpotifyRecs(artist, artistPrevalence, token, recname, recs);
+                    retry.then(function() {
+                        resolve();
+                    });
+                }, 3000);
             }
         });
     });
@@ -902,6 +933,7 @@ $(document).ready(function() {
 
     let url_check = window.location.href.match(url_re);
     if(url_check != null) {
+        console.log(window.location.href);
         window.location.hash = "#playlist-select";
     }
     else {
@@ -1201,7 +1233,7 @@ $(document).ready(function() {
     }
 
     input.keyup(function(e) {
-        if(e.which == 13) {
+        if(e.keyCode == 13) {
             if(current_visual != -1) {
                 choose_playlist(playlistImageBox.find(".playlist-visual-active"));
             }
@@ -1382,8 +1414,8 @@ $(document).ready(function() {
         let insertPromise = insertArtistRecs(artistRecs, token, 20);
         insertPromise.catch(function(msg) {
             showAlert(alert, "Could not load recommendations, please wait a few seconds");
-            artistRecList.find(".new-loader").remove();
-            setTimeout(load_more_recs, 3000);
+          //  artistRecList.find(".new-loader").remove();
+          //  setTimeout(load_more_recs, 3000);
         });
         insertPromise.then(function() {
             artistRecList.find(".new-loader").remove();
@@ -1400,7 +1432,22 @@ $(document).ready(function() {
             }
         }
     });
-
+/*
+    body.keyup(function(e) {
+        if(e.keyCode == 32) {
+            if(current_rec_info != undefined && window.location.hash == "#recommendations") {
+                let current_preview = $(current_rec_info).find(".preview-clip")[0];
+                if(current_preview != undefined && !$($(current_rec_info).find(".similar-to-box")[0]).is(":focus")) {
+                    e.preventDefault();
+                    if(current_preview.paused) 
+                        current_preview.play();
+                    else   
+                        current_preview.pause();
+                }
+            }
+        }
+    })
+*/
     function switchToPlaylistPage(current) {
         switchPage(current, playlistPage, "#playlist-select");
 
