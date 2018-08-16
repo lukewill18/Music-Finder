@@ -2,6 +2,9 @@ const lastfm = "69ea9630699c55e46ca0816adf440f44";
 let totalTracks;
 const url_re = new RegExp("^.*#access_token=(.*?)&token_type=.*$");
 let storage_full = false;
+let CancelToken = axios.CancelToken;
+let source = CancelToken.source();
+let cancelTrackRequest;
 
 function swap(arr, ind1, ind2) {
     let temp = arr[ind2];
@@ -50,17 +53,31 @@ function findPlaylistWithName(playlists, name) {
 
 function makeTrackRequest(user, playlist, offset, token, tracks) {
     return new Promise(function(resolve, reject) {
-        $.ajax({
+        axios({
             url: "https://api.spotify.com/v1/users/" + user + "/playlists/" + playlist + "/tracks?offset=" + offset.toString(),
             headers: {
                 'Authorization': 'Bearer ' + token
             },
-            success: function(response) {
-                let relevant = response.items.map(function(i) {
-                    return {"name": i.track.name, "artist": i.track.artists[0].name, "artist_id": i.track.artists[0].id, "images": i.track.album.images};
-                });
-                tracks = tracks.concat(relevant);
-                resolve(tracks);
+            cancelToken: new CancelToken(function executor(c) {
+                cancelTrackRequest = c;
+            })
+        }).then(function(response) {
+            response = response.data;
+            let relevant = response.items.map(function(i) {
+                return {"name": i.track.name, "artist": i.track.artists[0].name, "artist_id": i.track.artists[0].id, "images": i.track.album.images};
+            });
+            tracks = tracks.concat(relevant);
+            resolve(tracks);
+        }).catch(function(thrown) {
+            if(axios.isCancel(thrown))
+                reject("cancelled");
+            else {
+                setTimeout(function() {
+                    let retry = makeTrackRequest(user, playlist, offset, token, tracks);
+                    retry.then(function() {
+                        resolve(tracks);
+                    })
+                }, 3000);     
             }
         });
     });
@@ -124,22 +141,29 @@ function getArtistImage(artist) {
 function getLastfmGenres(artist, genrePrevalence) { // used if artist is not in spotify library
     let genre_name;
     return new Promise(function(resolve, reject) {
-        $.ajax({
+        axios({
             url: "http://ws.audioscrobbler.com/2.0/?method=artist.gettoptags&artist=" + artist + "&api_key=" + lastfm + "&format=json",
-            success: function(response) {
-                if(response.hasOwnProperty("error")) {
-                    resolve();
-                    return;
-                } 
-                let taglist = response.toptags.tag;
-                for(let i = 0; i < taglist.length && i <= 5; ++i) {
-                    genre_name = taglist[i].name.toLowerCase();
-                    if(genrePrevalence[genre_name] == undefined)
-                    genrePrevalence[genre_name] = 1;
-                    else
-                    genrePrevalence[genre_name]++;
-                }
+            cancelToken: new CancelToken(function executor(c) {
+                cancelTrackRequest = c;
+            })
+        }).then(function(response) {
+            response = response.data;
+            if(response.hasOwnProperty("error")) {
                 resolve();
+                return;
+            } 
+            let taglist = response.toptags.tag;
+            for(let i = 0; i < taglist.length && i <= 5; ++i) {
+                genre_name = taglist[i].name.toLowerCase();
+                if(genrePrevalence[genre_name] == undefined)
+                genrePrevalence[genre_name] = 1;
+                else
+                genrePrevalence[genre_name]++;
+            }
+            resolve();
+        }).catch(function(thrown) {
+            if(axios.isCancel(thrown)) {
+                reject("cancelled");
             }
         });
     });
@@ -152,28 +176,32 @@ function getSpotifyGenres(artists_with_id, artistPrevalence, promises, genrePrev
     let genres;
     let genre_name;
     return new Promise(function(resolve, reject) {
-        $.ajax({
+        axios({
             url: "https://api.spotify.com/v1/artists?ids=" + artist_ids,
             headers: {
                 'Authorization': 'Bearer ' + token
-            },
-            success: function(response) {
-                for(let i = 0; i < response.artists.length; ++i) {
-                    if(response.artists[i].genres.length == 0) {
-                        promises.push(getLastfmGenres(response.artists[i].name, genrePrevalence));
-                    }
-                    else {
-                        genres = response.artists[i].genres;
-                        for(let i = 0; i < genres.length && i <= 5; ++i) {
-                            genre_name = genres[i].toLowerCase();
-                            if(genrePrevalence[genre_name] == undefined)
-                                genrePrevalence[genre_name] = 1;
-                            else
-                                genrePrevalence[genre_name]++;
-                        }
+            }
+        }).then(function(response) {
+            response = response.data;
+            for(let i = 0; i < response.artists.length; ++i) {
+                if(response.artists[i].genres.length == 0) {
+                    promises.push(getLastfmGenres(response.artists[i].name, genrePrevalence));
+                }
+                else {
+                    genres = response.artists[i].genres;
+                    for(let i = 0; i < genres.length && i <= 5; ++i) {
+                        genre_name = genres[i].toLowerCase();
+                        if(genrePrevalence[genre_name] == undefined)
+                            genrePrevalence[genre_name] = 1;
+                        else
+                            genrePrevalence[genre_name]++;
                     }
                 }
-                resolve();
+            }
+            resolve();
+        }).catch(function(thrown) {
+            if(axios.isCancel(thrown)) {
+                reject("cancelled");
             }
         });
     });
@@ -296,6 +324,24 @@ function setTopTrack(spotify_id, token, recs, artist) {
     });
 }
 
+function findMatchingArtist(items, artist, searchname) {
+    let match = items[0];
+    if(match.name != artist && match.name != searchname) {
+        let try_again = items.find(function(a) {
+            return a.name == artist;
+        });
+        if(try_again != undefined) 
+            match = try_again;
+    }
+    for(let i = 0; i < items.length; ++i) {
+        if(items[i].name == artist) {
+            match = items[i];
+            break;
+        }
+    }
+    return match;
+}
+
 function setIDAndGenres(searchname, token, recs, artist) {
     return new Promise(function(resolve, reject) {
         $.ajax({
@@ -310,20 +356,7 @@ function setIDAndGenres(searchname, token, recs, artist) {
                     return;
                 }
 
-                let match = response.artists.items[0];
-                if(match.name != artist && match.name != searchname) {
-                    let try_again = response.artists.items.find(function(a) {
-                        return a.name == artist;
-                    });
-                    if(try_again != undefined) 
-                        match = try_again;
-                }
-                for(let i = 0; i < response.artists.items.length; ++i) {
-                    if(response.artists.items[i].name == artist) {
-                         match = response.artists.items[i];
-                         break;
-                    }
-                }
+                let match = findMatchingArtist(response.artists.items, artist, searchname);
                 recs[artist].spotify_id = match.id;
                 recs[artist].genres = match.genres;
                 resolve(recs[artist].spotify_id);
@@ -376,28 +409,32 @@ function getSpotifyRecs(artist, artistPrevalence, token, recname, recs) {
             resolve();
             return;
         }
-        $.ajax({
+        axios({
             url: "https://api.spotify.com/v1/artists/" + artistPrevalence[artist].artist_id + "/related-artists",
             headers: {
                 'Authorization': 'Bearer ' + token
             },
-            success: function(response) {
-               // console.log("spotify", response);
-                for(let i = 0; i < response.artists.length; ++i) {
-                    recname = response.artists[i].name;
-                    if(recs.hasOwnProperty(recname)) {
-                        recs[recname].match += artistPrevalence[artist].count * .5;
-                        recs[recname].similarTo.push({name: artistPrevalence[artist].display_name, similarity: .7});
-                    }
-                    else {
-                        if(artistPrevalence.hasOwnProperty(recname.toLowerCase())) continue;
-                        let images = response.artists[i].images;
-                        let pic = images.length > 0 ? images[0].url : "http://www.emoji.co.uk/files/microsoft-emojis/symbols-windows10/10176-white-question-mark-ornament.png";
-                        recs[recname] = {match: artistPrevalence[artist].count * .5, similarTo: [ {name: artistPrevalence[artist].display_name, similarity: .7}], info_id: null,
-                        art_id: null, image: pic, spotify_id: null, genres: [], top_track: null, album_art: []};                    
-                    }
+            cancelToken: source.token
+        }).then(function(response) {
+            response = response.data;
+            for(let i = 0; i < response.artists.length; ++i) {
+                recname = response.artists[i].name;
+                if(recs.hasOwnProperty(recname)) {
+                    recs[recname].match += artistPrevalence[artist].count * .5;
+                    recs[recname].similarTo.push({name: artistPrevalence[artist].display_name, similarity: .7});
                 }
-                resolve();
+                else {
+                    if(artistPrevalence.hasOwnProperty(recname.toLowerCase())) continue;
+                    let images = response.artists[i].images;
+                    let pic = images.length > 0 ? images[0].url : "http://www.emoji.co.uk/files/microsoft-emojis/symbols-windows10/10176-white-question-mark-ornament.png";
+                    recs[recname] = {match: artistPrevalence[artist].count * .5, similarTo: [ {name: artistPrevalence[artist].display_name, similarity: .7}], info_id: null,
+                    art_id: null, image: pic, spotify_id: null, genres: [], top_track: null, album_art: []};                    
+                }
+            }
+            resolve();
+        }).catch(function(thrown) {
+            if(axios.isCancel(thrown)) {
+                reject("cancelled");
             }
         });
     });
@@ -430,37 +467,40 @@ function getLastfmRecs(artist, artistPrevalence, token, recname, recs, promises)
             resolve();
         }
         else {
-            $.ajax({
+            axios({
                 url: "http://ws.audioscrobbler.com/2.0/?method=artist.getsimilar&artist=" + artist + "&api_key=" + lastfm + "&format=json",
-                success: function(response) {    
-                 //   console.log(response);
-                    if(response.hasOwnProperty("error")) {
-                        promises.push(getSpotifyRecs(artist, artistPrevalence, token, recname, recs));
-                        resolve();
-                    }
-                    else {
-                        let lastfmrecs = response.similarartists.artist;
-                        if(!storage_full) {
-                            let relevant_info = {recommendations: []};
-                            for(let i = 0; i < lastfmrecs.length; ++i) {
-                                relevant_info.recommendations.push({name: lastfmrecs[i].name, match: lastfmrecs[i].match, image: lastfmrecs[i].image});
-                            }
-                            try {
-                                sessionStorage.setItem(artist, JSON.stringify(relevant_info));
-                            }
-                            catch(e) {
-                                storage_full = true;
-                            }
+                cancelToken: source.token
+            }).then(function(response) {
+                response = response.data;
+                if(response.hasOwnProperty("error")) {
+                    promises.push(getSpotifyRecs(artist, artistPrevalence, token, recname, recs));
+                    resolve();
+                }
+                else {
+                    let lastfmrecs = response.similarartists.artist;
+                    if(!storage_full) {
+                        let relevant_info = {recommendations: []};
+                        for(let i = 0; i < lastfmrecs.length; ++i) {
+                            relevant_info.recommendations.push({name: lastfmrecs[i].name, match: lastfmrecs[i].match, image: lastfmrecs[i].image});
                         }
-                        updateRecsLastfm(artist, artistPrevalence, lastfmrecs, recs);
-                        resolve();
+                        try {
+                            sessionStorage.setItem(artist, JSON.stringify(relevant_info));
+                        }
+                        catch(e) {
+                            storage_full = true;
+                        }
                     }
+                    updateRecsLastfm(artist, artistPrevalence, lastfmrecs, recs);
+                    resolve();
+                }
+            }).catch(function(thrown) {
+                if(axios.isCancel(thrown)) {
+                    reject("cancelled");
                 }
             });
         }
     });
 }
-
 
 function collectArtistRecs(artistPrevalence, token, recs) {
     let recname;
@@ -615,8 +655,11 @@ $(document).ready(function() {
     let artistOrder;
     let genreOrder;
     let stats_loaded = false;
+    let stats_loading = false;
     let recs_loaded = false;
+    let first_recs_loading = false;
     let recs_loading = false;
+    let recs_cancelled = false;
     let tracks = [];
     let artistRecs = {};
     let current_rec_info;
@@ -625,6 +668,7 @@ $(document).ready(function() {
     let showing_alert = false;
     let playlists_generated = 0;
     let generating_playlist = false;
+    
 
     function showAlert(alert, message) {
         showing_alert = true;
@@ -642,7 +686,7 @@ $(document).ready(function() {
         });
     
         //alert.css({"opacity": 1, "z-index": 1, "top": "5px"});
-        alert.text("Error: " + message);
+        alert.text(message);
         setTimeout(function() {
             anime({
                 targets: '#alert',
@@ -927,7 +971,6 @@ $(document).ready(function() {
     }
 
     function setStatsPageBackground(all_images) {
-        
         shuffle_array(all_images);
         let images = new Set(all_images);
         let i = 0;
@@ -937,13 +980,24 @@ $(document).ready(function() {
         while(i < max) {
             for(let image of images) {           
                 if(i >= max) break;
-                temp += `<div class="stats-background-box" style="flex-basis: ${fb}">
+                temp += `<div class="stats-background-box" id="box${i}" style="flex-basis: ${fb}">
                             <img class="stats-background-img" src=${image}>
                         </div>`
                 ++i;
             }
         }
         statsBackground.append(temp);
+
+        for(let i = 0; i <= max; ++i) {
+            setTimeout(function() {
+                anime({
+                    targets: '#box' + i.toString(),
+                    opacity: 1,
+                    easing: "linear",
+                    duration: 300
+                });
+            }, Math.floor(Math.random() * 10000) % 1000);  
+        }
     }
 
     function handleStatistics(user, playlist) {
@@ -983,9 +1037,19 @@ $(document).ready(function() {
         shuffle_array(images);
         let temp = ``;
         for(let i = 0; i < images.length; ++i) {
-            temp += `<div class="recs-background-box"><img src="${images[i]}" class="recs-background-img"></div>`;
+            temp += `<div class="recs-background-box" id="recsbox${i}"><img src="${images[i]}" class="recs-background-img"></div>`;
         }
         recsBackground.append(temp);
+        for(let i = 0; i < images.length; ++i) {
+        setTimeout(function() {
+            anime({
+                targets: '#recsbox' + i.toString(),
+                opacity: 1,
+                easing: "linear",
+                duration: 300
+            });
+        }, Math.floor(Math.random() * 10000) % 3000);  
+        }
         recs_background_loaded = true;
     }
 
@@ -1039,12 +1103,59 @@ $(document).ready(function() {
         return template;
     }
 
+    function generateLiTemplate(pre_checked, recOrder, i) {
+        template = `<li class="artist-rec centered"><input type="checkbox" class="rec-checkbox"`
+        if(pre_checked) {
+            template += ` checked`
+        }
+        template += `><p class="rec-name">${recOrder[i]}</p></li>`;
+        return template;
+    }
+
+    function determinePreCheck() {
+        let pre_checked;
+        let check_all = recPage.find("#check-all");
+        if(check_all.length < 1)
+            pre_checked = false;
+        else   
+            pre_checked = check_all[0].checked;
+        return pre_checked;
+    }
+
+    function generateRecTemplates(recOrder, num_recs, artistRecs, pre_checked) {
+        let li_template = ``;
+        let modal_template = ``;
+        let side_art_template = ``;
+        for(let i = recOffset; i < recOrder.length && i < num_recs + recOffset; ++i) {
+            let sortedSimilar = artistRecs[recOrder[i]].similarTo.sort(function(a, b) {
+                return b.similarity - a.similarity;
+            });
+            artistRecs[recOrder[i]].info_id = "info" + i.toString();
+            li_template += generateLiTemplate(pre_checked, recOrder, i);
+            modal_template += generateArtistModalTemplate(artistRecs, recOrder, i, sortedSimilar);
+            side_art_template += generateSideArtTemplate(artistRecs, recOrder, i);
+        }
+        return {li_template: li_template, modal_template: modal_template, side_art_template: side_art_template};
+    }
+
+    function appendRecTemplates(li_template, modal_template, side_art_template) {
+        artistRecList.find(".loading").addClass("hidden");
+        artistRecList.find("#check-all-row").removeClass("hidden");
+        artistRecList.append(li_template);
+        recModal.append(modal_template);
+        artBox.append(side_art_template);
+    }
+
+    function makeAudioQuieter() {
+        let audio_clips = recModal.find(".preview-clip");
+        for(let i = 0; i < audio_clips.length; ++i) {
+            audio_clips[i].volume = .25;
+        }
+    }
+
+
     function insertArtistRecs(artistRecs, token, num_recs) {
         let promises = [];
-       
-        let li_template = ``;
-        let modal_template  = ``;
-        let side_art_template = ``;
         let recOrder = Object.keys(artistRecs).sort(function(a, b) {
             return artistRecs[b].match - artistRecs[a].match;
         });
@@ -1060,36 +1171,11 @@ $(document).ready(function() {
             all.then(function() {
                 if(!recs_background_loaded) 
                     setRecsBackground(recOrder, num_recs);
-                let check_all = recPage.find("#check-all");
-                let pre_checked;
-                if(check_all.length < 1)
-                    pre_checked = false;
-                else   
-                    pre_checked = check_all[0].checked;
+                let pre_checked = determinePreCheck();
                 
-                    for(let i = recOffset; i < recOrder.length && i < num_recs + recOffset; ++i) {
-                    let sortedSimilar = artistRecs[recOrder[i]].similarTo.sort(function(a, b) {
-                        return b.similarity - a.similarity;
-                    });
-                    artistRecs[recOrder[i]].info_id = "info" + i.toString();
-                    
-                    li_template += `<li class="artist-rec centered"><input type="checkbox" class="rec-checkbox"`
-                    if(pre_checked) {
-                        li_template += ` checked`
-                    }
-                    li_template += `><p class="rec-name">${recOrder[i]}</p></li>`;
-                    modal_template += generateArtistModalTemplate(artistRecs, recOrder, i, sortedSimilar);
-                    side_art_template += generateSideArtTemplate(artistRecs, recOrder, i);
-                }
-                artistRecList.find(".loading").addClass("hidden");
-                artistRecList.find("#check-all-row").removeClass("hidden");
-                artistRecList.append(li_template);
-                recModal.append(modal_template);
-                artBox.append(side_art_template);
-                let audio_clips = recModal.find(".preview-clip");
-                for(let i = 0; i < audio_clips.length; ++i) {
-                    audio_clips[i].volume = .25;
-                }
+                let templates = generateRecTemplates(recOrder, num_recs, artistRecs, pre_checked);
+                appendRecTemplates(templates.li_template, templates.modal_template, templates.side_art_template);
+                makeAudioQuieter();
                 recOffset += num_recs;
                 resolve();
             });        
@@ -1097,11 +1183,10 @@ $(document).ready(function() {
     }
     
     function handleRecommendations() {
+        first_recs_loading = true;
         let artistRecPromise = collectArtistRecs(artistPrevalence, token, artistRecs);
         artistRecPromise.then(function() {
-            //console.log(artistRecs);
-            //console.timeEnd("recs");
-            //console.log(artistRecs);
+            first_recs_loading = false;
             let insertPromise = insertArtistRecs(artistRecs, token, 30);
             insertPromise.catch(function(msg) {
                 showAlert(alert, "Could not load recommendations, please refresh the page and try again");
@@ -1110,6 +1195,8 @@ $(document).ready(function() {
                 recs_loaded = true;
                 
             });
+        });
+        artistRecPromise.catch(function(e) {
         });
     }
 
@@ -1289,24 +1376,27 @@ $(document).ready(function() {
         window.open(playlistURL);
     });
 
+    function load_more_recs() {
+        recs_loading = true;
+        artistRecList.append(`<li class="new-loader"><div class="loader"></li>`);
+        let insertPromise = insertArtistRecs(artistRecs, token, 20);
+        insertPromise.catch(function(msg) {
+            showAlert(alert, "Could not load recommendations, please wait a few seconds");
+            artistRecList.find(".new-loader").remove();
+            setTimeout(load_more_recs, 3000);
+        });
+        insertPromise.then(function() {
+            artistRecList.find(".new-loader").remove();
+            recs_loading = false;
+        });
+    }
 
     artistRecList.scroll(function(e) {
         if(recs_loading || showing_alert) return;
         if(recs_loaded) {
             let scroll_dist = $(this).scrollTop() + $(this).innerHeight();
             if(scroll_dist + 100 > this.scrollHeight) {
-                recs_loading = true;
-                artistRecList.append(`<li class="new-loader"><div class="loader"></li>`);
-                let insertPromise = insertArtistRecs(artistRecs, token, 20);
-                insertPromise.catch(function(msg) {
-                    showAlert(alert, "Could not load recommendations, please wait a few seconds");
-                    artistRecList.find(".new-loader").remove();
-                    recs_loading = false;
-                });
-                insertPromise.then(function() {
-                    artistRecList.find(".new-loader").remove();
-                    recs_loading = false;
-                });
+                load_more_recs();
             }
         }
     });
@@ -1373,11 +1463,13 @@ $(document).ready(function() {
             genrePromise.then(function() {
                 insertTopGenres(tracks.length);
                 stats_loaded = true;
+                stats_loading = false;
                 if(!recs_loaded) {
                     clearRecs();
                     handleRecommendations();
                 }
             }); 
+        }).catch(function(thrown) {
         });
     }
 
@@ -1429,12 +1521,18 @@ $(document).ready(function() {
         backgroundVideo.addClass("hidden");
         if(!stats_loaded) {
             clearStats();
+            stats_loading = true;
+            recs_cancelled = false;
             if(!using_most_listened) {
                 loadPlaylistStats();
             }
             else {
                 loadMostListenedStats();
             }
+        }
+        else if (recs_cancelled && !recs_loaded) {
+            clearRecs();
+            handleRecommendations();
         }
     }
 
@@ -1456,6 +1554,15 @@ $(document).ready(function() {
         let current = body.find(".shown");
         if(hash == "#playlist-select") {
             switchToPlaylistPage(current);
+            if(first_recs_loading) {
+                source.cancel();
+                CancelToken = axios.CancelToken;
+                source = CancelToken.source();
+                recs_cancelled = true;
+            }
+            if(stats_loading) {
+                cancelTrackRequest();
+            }
         }
         else if(hash == "#statistics") {
             switchToStatsPage(current);
