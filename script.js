@@ -131,7 +131,7 @@ function getMostListenedArtistPrevalence(most_listened) {
 function getArtistImage(artist) {
     return new Promise(function(resolve, reject) {
         $.ajax({
-            url: "http://ws.audioscrobbler.com/2.0/?method=artist.getinfo&artist=" + artist + "&api_key=" + lastfm + "&format=json",
+            url: "https://ws.audioscrobbler.com/2.0/?method=artist.getinfo&artist=" + artist + "&api_key=" + lastfm + "&format=json",
             success: function(response) {
 
                 if(response.hasOwnProperty("error")) {
@@ -149,7 +149,7 @@ function getLastfmGenres(artist, genrePrevalence) { // used if artist is not in 
     let genre_name;
     return new Promise(function(resolve, reject) {
         axios({
-            url: "http://ws.audioscrobbler.com/2.0/?method=artist.gettoptags&artist=" + artist + "&api_key=" + lastfm + "&format=json",
+            url: "https://ws.audioscrobbler.com/2.0/?method=artist.gettoptags&artist=" + artist + "&api_key=" + lastfm + "&format=json",
             cancelToken: new CancelToken(function executor(c) {
                 cancelTrackRequest = c;
             })
@@ -536,7 +536,7 @@ function getLastfmRecs(artist, artistPrevalence, token, recname, recs, promises)
         }
         else {
             axios({
-                url: "http://ws.audioscrobbler.com/2.0/?method=artist.getsimilar&artist=" + artist + "&api_key=" + lastfm + "&format=json",
+                url: "https://ws.audioscrobbler.com/2.0/?method=artist.getsimilar&artist=" + artist + "&api_key=" + lastfm + "&format=json",
                 cancelToken: source.token
             }).then(function(response) {
                 response = response.data;
