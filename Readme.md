@@ -3,13 +3,14 @@
 #### A web application designed to help users find new music. Main features are displaying statistics about the user’s playlist and displaying recommended artists who the user can choose to add to a playlist that the app generates.
 
 ### How To Use
-The application can only be used while running on a server, so to run locally either use Node or Live server preview plugin in Visual Studio.
+The website is currently running at https://lukewill18.github.io/Music-Finder/. Otherwise, the application can only be used while running on a server, so to run locally either use Node or Live server preview plugin in Visual Studio.
 
 ### Features
 #### Home Page:
 - Prompts the user to login to Spotify
 #### Playlist Selection Page:
 - Prompts the user to choose the playlist that they would like recommendations based off of
+- Also provides the option of using the user's most-listened-to artists on Spotify instead
 #### Statistics Page: 
 - Displays the most prevalent genres and most prevalent artists in the user’s playlist
 ##### Steps for doing this:
