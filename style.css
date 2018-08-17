@@ -102,7 +102,7 @@ h1 {
     margin-top: 10px;
 }
 
-#use-most-listened-btn:hover {
+#use-most-listened-btn:hover, #playlist-link-btn:hover {
     background-color: #178c40;
 }
 
@@ -812,7 +812,7 @@ h1 {
     }
 }
 
-@media screen and (max-width: 700px) and (min-height: 600px) {
+@media screen and (max-width: 699px) and (min-height: 600px) {
     .col-sm-9 {
         width: 100%;
     }
@@ -820,10 +820,21 @@ h1 {
         width: 100%;
     }
     .modal {
-        width: 360px!important;
-        height: 550px!important;
+        width: 350px!important;
+        height: 540px!important;
         font-size: 100px!important;
     }
+    .rec-genre-list-container {
+        height: 50px!important;
+    }
+    .song-preview-container {
+        height: 100px!important;
+    }
+    .artist-img {
+        width: 150px;
+        height: 150px;
+    }
+
     #rec-modal .col-7 {
         font-size: 100px!important;
         padding: 0 10px!important;
@@ -835,26 +846,13 @@ h1 {
 }
 
 @media screen and (min-width: 700px) and (max-height: 600px) {
-    .modal {
-        width: 699px;
-        height: 400px;
-        font-size: 90px;
-    }
-    #rec-modal .col-7 {
-        font-size: 90px;
-    }
-    .artist-img {
-        width: 200px;
-        height: 200px;
-    }
-
     #submit-settings-btn {
         margin-top: 15px;
     }
 }
 
 
-@media screen and (max-width: 700px) and (max-height: 600px) {
+@media screen and (max-width: 700px) and (max-height: 599px) {
     .col-sm-9 {
         width: 75%;
     }
@@ -898,15 +896,17 @@ h1 {
         font-size: 75px;
     }
     .rec-genre-list-container {
-        height: 80px!important;
+        height: 50px!important;
     }
-
+    .song-preview-container {
+        height: 105px!important;
+    }
     #most-listened-modal h5 {
         font-size: 30px;
     }
 }
 
-@media screen and (max-width: 550px) and (max-height: 450px) {
+@media screen and (max-width: 550px) and (max-height: 449px) {
     .modal {
         width: 350px;
         height: 200px;
@@ -920,6 +920,9 @@ h1 {
     }
     #most-listened-modal h5 {
         font-size: 30px;
+    }
+    .song-preview-container {
+        height: 54px!important;
     }
 } 
 
@@ -1035,8 +1038,9 @@ h1 {
 .song-preview-container {
     position: relative;
     padding: 0;
-    height: 100%;
+    height: 120px;
     width: 100%;
+    overflow-y: auto;
     font-size: .16em;
 }
 
@@ -1047,7 +1051,41 @@ h1 {
     left: 0;
 }
 
-#album-art-box {
+.preview-clip-info {
+    margin-left: 10px;
+    padding-top: 10px;
+    width: 90%;
+    height: calc(100% - 54px);
+    position: absolute;
+    top: 50px;
+    left: 0;
+}
+
+.preview-clip-info-text {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+}
+
+.songname, .albumname {
+    position: absolute;
+    top: 0;
+    width: 47%;
+    height: 100%;
+    text-align: left;
+}
+
+.songname {
+    left: 0;
+}
+
+.albumname {
+    left: 47%;
+}
+
+
+#album-art-box {    
     text-align: center;
     height: calc(100% - 100px);
     width: 100%;

@@ -36,6 +36,20 @@ function collectAllPlaylists(token) {
             },
             success: function(response) {
                 resolve(response.items);
+            },
+            error: function(response) {
+                if(response.status == 401) {
+                    window.location.hash = ""
+                    alert("Session Expired");
+                }
+                else {
+                    setTimeout(function() {
+                        let retry = collectAllPlaylists(token);
+                        retry.then(function(items) {
+                            resolve(items);
+                        });
+                    }, 3000);
+                }
             }
         });
     });
@@ -613,6 +627,20 @@ function createEmptyPlaylist(user, token, playlistName, namesWithoutTrack) {
             success: function(response) {
                 let playlist = response;
                 resolve(playlist);
+            },
+            error: function(response) {
+                if(response.status == 401) {
+                    window.location.hash = ""
+                    alert("Session Expired");
+                }
+                else {
+                    setTimeout(function() {
+                        let retry = createEmptyPlaylist(user, token, playlistName, namesWithoutTrack);
+                        retry.then(function(p) {
+                            resolve(p);
+                        });
+                    }, 3000);
+                }
             }
         });
     });
@@ -636,6 +664,20 @@ function addTracksToPlaylist(trackids, playlist, user, token) {
                 data: json_string,
                 success: function(response) {
                     resolve();
+                },
+                error: function(response) {
+                    if(response.status == 401) {
+                        window.location.hash = ""
+                        alert("Session Expired");
+                    }
+                    else {
+                        setTimeout(function() {
+                            let retry = addTracksToPlaylist(trackids, playlist, user, token);
+                            retry.then(function() {
+                                resolve();
+                            });
+                        }, 3000);
+                    }
                 }
             });
         }));
@@ -896,6 +938,20 @@ $(document).ready(function() {
                 headers: { "Authorization": "Bearer " + token },
                 success: function(response) {
                     resolve(response.items);
+                },
+                error: function(response) {
+                    if(response.status == 401) {
+                        window.location.hash = ""
+                        alert("Session Expired");
+                    }
+                    else {
+                        setTimeout(function() {
+                            let retry = getMostListenedArtists(num_artists, time_range);
+                            retry.then(function(items) {
+                                resolve(items);
+                            });
+                        }, 3000);
+                    }
                 }
             });
         });
@@ -908,6 +964,20 @@ $(document).ready(function() {
                 headers: { "Authorization": "Bearer " + token },
                 success: function(response) {
                     resolve(response.id);
+                },
+                error: function(response) {
+                    if(response.status == 401) {
+                        window.location.hash = ""
+                        alert("Session Expired");
+                    }
+                    else {
+                        setTimeout(function() {
+                            let retry = getMostListenedUserID();
+                            retry.then(function(id) {
+                                resolve(id);
+                            });
+                        }, 3000);
+                    }
                 }
             });
         });
@@ -979,6 +1049,7 @@ $(document).ready(function() {
 
     $("#login-btn").click(function() {
         window.location.href = "https://accounts.spotify.com/authorize?client_id=73df06c4d237418197bc43d50f729c0f&response_type=token&scope=playlist-modify-public user-top-read&redirect_uri=https://lukewill18.github.io/Music-Finder/&show_dialog=true";
+        //window.location.href = "https://accounts.spotify.com/authorize?client_id=73df06c4d237418197bc43d50f729c0f&response_type=token&scope=playlist-modify-public user-top-read&redirect_uri=http://localhost:5500/&show_dialog=true";
     });
 
     function clearStats() {
@@ -1141,7 +1212,9 @@ $(document).ready(function() {
                                     </div>
                                     <div class="song-preview-container">`;
                         if(artistRecs[recOrder[i]].top_track != null) {
-                            template += `<audio controls class="preview-clip" preload="none" src="${artistRecs[recOrder[i]].top_track.preview_url}">`
+                            let track = artistRecs[recOrder[i]].top_track;
+                            template += `<audio controls class="preview-clip" preload="none" src="${track.preview_url}"></audio>`
+                            template += `<div class="preview-clip-info"><p class="preview-clip-info-text"><span class="songname"><i class="fas fa-music"></i>&ensp;${track.name}</span><span class="albumname"><i class="fas fa-compact-disc"></i>&ensp;${track.album.name}</span></p></div>`;
                         }
                         else {
                             template += `(No song preview available)`
@@ -1221,7 +1294,6 @@ $(document).ready(function() {
             audio_clips[i].volume = .25;
         }
     }
-
 
     function insertArtistRecs(artistRecs, token, num_recs) {
         let promises = [];
