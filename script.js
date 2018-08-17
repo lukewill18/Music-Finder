@@ -310,6 +310,54 @@ function filterDuplicateAlbums(albums) {
     return no_duplicates;
 }
 
+function setLastfmArt(recs, artist) {
+    return new Promise(function(resolve, reject) {
+        $.ajax({
+            url: "https://ws.audioscrobbler.com/2.0/?method=artist.gettopalbums&artist=" + artist + "&api_key=" + lastfm + "&format=json",
+            success: function(response) {
+                let topalbum = response.topalbums.album[0];
+                let art = topalbum.image.length > 3 ? topalbum.image[3]["#text"] : "http://www.emoji.co.uk/files/microsoft-emojis/symbols-windows10/10176-white-question-mark-ornament.png";
+                recs[artist].album_art.push(art);
+                resolve();
+            }
+        });
+    });
+}
+
+function setAnyArt(spotify_id, token, recs, artist) {
+    return new Promise(function(resolve, reject) {
+        $.ajax({
+            url: "https://api.spotify.com/v1/artists/" + spotify_id + "/albums",
+            headers: {
+                'Authorization': 'Bearer ' + token,
+            },
+            success: function(response) {
+                for(let i = 0; i < response.items.length; ++i) {
+                    if(response.items[i].images.length > 0) {
+                        let img = response.items[i].images[0].url;
+                        recs[artist].album_art.push(img);
+                    }
+                }
+                resolve();
+            },
+            error: function(response) {
+                if(response.status == 401) {
+                    window.location.hash = ""
+                    alert("Session Expired");
+                }
+                else {
+                    setTimeout(function() {
+                        let retry = setAnyArt(spotify_id, token, recs, artist);
+                        retry.then(function() {
+                            resolve();
+                        });
+                    }, 3000);
+                }
+            }
+        });
+    });
+}
+
 function setAlbumArt(spotify_id, token, recs, artist) {
     return new Promise(function(resolve, reject) {
         $.ajax({
@@ -318,14 +366,22 @@ function setAlbumArt(spotify_id, token, recs, artist) {
                 'Authorization': 'Bearer ' + token,
             },
             success: function(response) {
-                let no_duplicates = filterDuplicateAlbums(response.items);
-                for(let i = 0; i < no_duplicates.length; ++i) {
-                    if(no_duplicates[i].images.length > 0) {
-                        let img = no_duplicates[i].images[0].url;
-                        recs[artist].album_art.push(img);
-                    }
+                if(response.items.length == 0) {
+                    let p = setAnyArt(spotify_id, token, recs, artist);
+                    p.then(function() {
+                        resolve();
+                    });
                 }
-                resolve();
+                else {
+                    let no_duplicates = filterDuplicateAlbums(response.items);
+                    for(let i = 0; i < no_duplicates.length; ++i) {
+                        if(no_duplicates[i].images.length > 0) {
+                            let img = no_duplicates[i].images[0].url;
+                            recs[artist].album_art.push(img);
+                        }
+                    }
+                    resolve();
+                }
             },
             error: function(response) {
                 if(response.status == 401) {
@@ -444,7 +500,10 @@ function getAdditionalArtistInfo(artist, token, recs) {
         });
         p1.then(function(spotify_id) {
             if(spotify_id == undefined) {
-                resolve();
+                let p3_alt = setLastfmArt(recs, artist);
+                p3_alt.then(function() {
+                    resolve();
+                });
             }
             else {
                 let p2 = setTopTrack(spotify_id, token, recs, artist);
@@ -1056,8 +1115,8 @@ $(document).ready(function() {
     }
 
     $("#login-btn").click(function() {
-        //window.location.href = "https://accounts.spotify.com/authorize?client_id=73df06c4d237418197bc43d50f729c0f&response_type=token&scope=playlist-modify-public user-top-read&redirect_uri=https://lukewill18.github.io/Music-Finder/&show_dialog=true";
-        window.location.href = "https://accounts.spotify.com/authorize?client_id=73df06c4d237418197bc43d50f729c0f&response_type=token&scope=playlist-modify-public user-top-read&redirect_uri=http://localhost:5500/&show_dialog=true";
+        window.location.href = "https://accounts.spotify.com/authorize?client_id=73df06c4d237418197bc43d50f729c0f&response_type=token&scope=playlist-modify-public user-top-read&redirect_uri=https://lukewill18.github.io/Music-Finder/&show_dialog=true";
+        //window.location.href = "https://accounts.spotify.com/authorize?client_id=73df06c4d237418197bc43d50f729c0f&response_type=token&scope=playlist-modify-public user-top-read&redirect_uri=http://localhost:5500/&show_dialog=true";
     });
 
     function clearStats() {
@@ -1309,10 +1368,7 @@ $(document).ready(function() {
             return artistRecs[b].match - artistRecs[a].match;
         });
         
-        console.log(artistRecs);
         for(let i = recOffset; i < recOrder.length && i < num_recs + recOffset; ++i) {
-            console.log(recOrder[i]);
-            console.log(artistRecs[recOrder[i]]);
             promises.push(getAdditionalArtistInfo(recOrder[i], token, artistRecs));
         }
         return new Promise(function(resolve, reject) {
@@ -1336,7 +1392,6 @@ $(document).ready(function() {
     
     function handleRecommendations() {
         first_recs_loading = true;
-        console.log(artistPrevalence);
         let artistRecPromise = collectArtistRecs(artistPrevalence, token, artistRecs);
         artistRecPromise.then(function() {
             first_recs_loading = false;
@@ -1377,6 +1432,7 @@ $(document).ready(function() {
 
 
     function hideRecModal() {
+        showing_rec_modal = false;
         recModalContainer.css("display", "none");
      //   body.toggleClass("stop-scroll");
         recModal.css("opacity", "0");
@@ -1554,22 +1610,21 @@ $(document).ready(function() {
             }
         }
     });
-/*
-    body.keyup(function(e) {
-        if(e.keyCode == 32) {
-            if(current_rec_info != undefined && window.location.hash == "#recommendations") {
-                let current_preview = $(current_rec_info).find(".preview-clip")[0];
-                if(current_preview != undefined && !$($(current_rec_info).find(".similar-to-box")[0]).is(":focus")) {
-                    e.preventDefault();
-                    if(current_preview.paused) 
-                        current_preview.play();
-                    else   
-                        current_preview.pause();
-                }
+
+    body.keydown(function(e) {
+        if(e.keyCode == 32 && showing_rec_modal && window.location.hash == "#recommendations") {
+            e.preventDefault();
+            let current_preview = $(current_rec_info).find(".preview-clip")[0];
+            if(current_preview != undefined) {
+                if(current_preview.paused) 
+                    current_preview.play();
+                else   
+                    current_preview.pause();
             }
+            
         }
-    })
-*/
+    });
+
     function switchToPlaylistPage(current) {
         switchPage(current, playlistPage, "#playlist-select");
 
