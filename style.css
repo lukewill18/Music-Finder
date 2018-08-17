@@ -52,6 +52,17 @@ html, body {
     object-fit: cover;
 }
 
+@supports (-ms-ime-align:auto) {
+    #background-video {
+        width: auto;
+    }
+    @media screen and (min-width: 1300px) {
+        #background-video {
+            height: auto;
+        }
+    }
+}
+
 #login-btn, #playlist-link-btn, #use-most-listened-btn {
     background-color: #1db954;
     border: 1px solid white;
@@ -89,6 +100,10 @@ h1 {
 #use-most-listened-btn {
     margin-left: 10px;
     margin-top: 10px;
+}
+
+#use-most-listened-btn:hover {
+    background-color: #178c40;
 }
 
 @media screen and (max-width: 387px) {
@@ -280,16 +295,18 @@ h1 {
     }
 }*/
 
-@media screen and (max-width: 500px), screen and (max-height: 580px) {
-    #playlist-select-box {
-        width: 300px;
-        height: 300px;
-    }
-
+@media screen and (max-height: 625px) {
     #use-most-listened-btn {
         width: 150px;
         height: 49px;
         font-size: 12px;
+    }
+}
+
+@media screen and (max-width: 500px), screen and (max-height: 625px) {
+    #playlist-select-box {
+        width: 300px;
+        height: 300px;
     }
 
     #playlist-select-controls {
@@ -818,7 +835,6 @@ h1 {
 }
 
 @media screen and (min-width: 700px) and (max-height: 600px) {
-
     .modal {
         width: 699px;
         height: 400px;
@@ -830,6 +846,10 @@ h1 {
     .artist-img {
         width: 200px;
         height: 200px;
+    }
+
+    #submit-settings-btn {
+        margin-top: 15px;
     }
 }
 

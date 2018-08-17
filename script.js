@@ -72,12 +72,19 @@ function makeTrackRequest(user, playlist, offset, token, tracks) {
             if(axios.isCancel(thrown))
                 reject("cancelled");
             else {
-                setTimeout(function() {
-                    let retry = makeTrackRequest(user, playlist, offset, token, tracks);
-                    retry.then(function() {
-                        resolve(tracks);
-                    })
-                }, 3000);     
+                console.log(thrown.response.status);
+                if(thrown.response.status == 401) {
+                    window.location.hash = "";
+                    alert("Session Expired");
+                }
+                else {
+                    setTimeout(function() {
+                        let retry = makeTrackRequest(user, playlist, offset, token, tracks);
+                        retry.then(function() {
+                            resolve(tracks);
+                        })
+                    }, 3000);     
+                }
             }
         });
     });
@@ -204,12 +211,18 @@ function getSpotifyGenres(artists_with_id, artistPrevalence, promises, genrePrev
                 reject("cancelled");
             }
             else {
-                setTimeout(function() {
-                    let retry = getSpotifyGenres(artists_with_id, artistPrevalence, promises, genrePrevalence, token);
-                    retry.then(function() {
-                        resolve();
-                    });
-                }, 3000)
+                if(thrown.response.status == 401) {
+                    window.location.hash = "";
+                    alert("Session Expired");
+                }
+                else {
+                    setTimeout(function() {
+                        let retry = getSpotifyGenres(artists_with_id, artistPrevalence, promises, genrePrevalence, token);
+                        retry.then(function() {
+                            resolve();
+                        });
+                    }, 3000);
+                }
             }
         });
     });
@@ -302,12 +315,18 @@ function setAlbumArt(spotify_id, token, recs, artist) {
                 resolve();
             },
             error: function(response) {
-                setTimeout(function() {
-                    let retry = setAlbumArt(spotify_id, token, recs, artist);
-                    retry.then(function() {
-                        resolve();
-                    });
-                }, 3000);
+                if(response.status == 401) {
+                    window.location.hash = ""
+                    alert("Session Expired");
+                }
+                else {
+                    setTimeout(function() {
+                        let retry = setAlbumArt(spotify_id, token, recs, artist);
+                        retry.then(function() {
+                            resolve();
+                        });
+                    }, 3000);
+                }
             }
         });
     });
@@ -331,12 +350,18 @@ function setTopTrack(spotify_id, token, recs, artist) {
                 resolve(spotify_id);
             },
             error: function(response) {
-                setTimeout(function() {
-                    let retry = setTopTrack(spotify_id, token, recs, artist);
-                    retry.then(function(sid) {
-                        resolve(sid);
-                    });
-                }, 3000);
+                if(response.status == 401) {
+                    window.location.hash = ""
+                    alert("Session Expired");
+                }
+                else {
+                    setTimeout(function() {
+                        let retry = setTopTrack(spotify_id, token, recs, artist);
+                        retry.then(function(sid) {
+                            resolve(sid);
+                        });
+                    }, 3000);
+                }   
             }
         });
     });
@@ -380,12 +405,18 @@ function setIDAndGenres(searchname, token, recs, artist) {
                 resolve(recs[artist].spotify_id);
             },
             error: function(response) {
-                setTimeout(function() {
-                    let retry = setIDAndGenres(searchname, token, recs, artist);
-                    retry.then(function() {
-                        resolve();
-                    })
-                }, 3000);
+                if(response.status == 401) {
+                    window.location.hash = ""
+                    alert("Session Expired");
+                }
+                else {
+                    setTimeout(function() {
+                        let retry = setIDAndGenres(searchname, token, recs, artist);
+                        retry.then(function() {
+                            resolve();
+                        })
+                    }, 3000);
+                }
             }
         }); 
     });
@@ -460,12 +491,18 @@ function getSpotifyRecs(artist, artistPrevalence, token, recname, recs) {
                 reject("cancelled");
             }
             else {
-                setTimeout(function() {
-                    let retry = getSpotifyRecs(artist, artistPrevalence, token, recname, recs);
-                    retry.then(function() {
-                        resolve();
-                    });
-                }, 3000);
+                if(thrown.response.status == 401) {
+                    window.location.hash = "";
+                    alert("Session Expired");
+                }
+                else {
+                    setTimeout(function() {
+                        let retry = getSpotifyRecs(artist, artistPrevalence, token, recname, recs);
+                        retry.then(function() {
+                            resolve();
+                        });
+                    }, 3000);
+                }
             }
         });
     });
@@ -899,8 +936,8 @@ $(document).ready(function() {
             return;
         }
         let num_artists = $(this).find("#num-artists").val();
-        if(num_artists == "" || num_artists < 10 || num_artists > 50) {
-            showAlert("Please enter a valid number of artists (between 10 and 50)")
+        if(num_artists == "" || num_artists < 1 || num_artists > 50) {
+            showAlert("Please enter a valid number of artists (between 1 and 50)")
             return;
         }
         hideMostListenedModal();
@@ -1073,14 +1110,14 @@ $(document).ready(function() {
         }
         recsBackground.append(temp);
         for(let i = 0; i < images.length; ++i) {
-        setTimeout(function() {
-            anime({
-                targets: '#recsbox' + i.toString(),
-                opacity: 1,
-                easing: "linear",
-                duration: 300
-            });
-        }, Math.floor(Math.random() * 10000) % 3000);  
+            setTimeout(function() {
+                anime({
+                    targets: '#recsbox' + i.toString(),
+                    opacity: 1,
+                    easing: "linear",
+                    duration: 300
+                });
+            }, Math.floor(Math.random() * 10000) % 3000);  
         }
         recs_background_loaded = true;
     }
@@ -1329,8 +1366,9 @@ $(document).ready(function() {
         }, 3000);
     }
 
-    recPage.on("mouseenter", ".rec-name", function() {        
-        let name = $(this).text();
+    recPage.on("mouseenter", ".artist-rec", function() {        
+        if($(this).id == "check-all-row") return;
+        let name = $(this).find(".rec-name").text();
         if(!artistRecs.hasOwnProperty(name)) return;
 
         if(current_art == undefined) {
