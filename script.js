@@ -86,7 +86,6 @@ function makeTrackRequest(user, playlist, offset, token, tracks) {
             if(axios.isCancel(thrown))
                 reject("cancelled");
             else {
-                console.log(thrown.response.status);
                 if(thrown.response.status == 401) {
                     window.location.hash = "";
                     alert("Session Expired");
@@ -131,7 +130,7 @@ function getArtistPrevalence(tracks) {
 }
 
 function getMostListenedArtistPrevalence(most_listened) {
-    let increment = Math.floor(most_listened.length / 10);
+    let increment = Math.ceil(most_listened.length / 10);
     let prevalence = {};
     for(let i = 0; i < most_listened.length; ++i) {
         if(i > 0 && i % 10 == 0)
@@ -892,6 +891,15 @@ $(document).ready(function() {
     }
 
     function handlePlaylistSelection() {
+        if(playlists.length == 0) {
+            current_visual = -1;
+            noResultsVisual.removeClass("hidden");
+            noResultsVisual.addClass("playlist-visual-active");
+            noResultsVisual.children("#no-results-msg").text("No playlists found. Please ensure that the playlists you want to use are public.");
+            noResultsVisual.children("#invalid-playlist-name").remove();
+            noResultsVisual.children("#quote").remove();
+            playlistImageBox.removeClass("glow");
+        }
         addPlaylistVisuals();
         visuals = playlistImageBox.find(".playlist-visual");
         $(visuals[current_visual]).addClass("playlist-visual-active");
@@ -1048,8 +1056,8 @@ $(document).ready(function() {
     }
 
     $("#login-btn").click(function() {
-        window.location.href = "https://accounts.spotify.com/authorize?client_id=73df06c4d237418197bc43d50f729c0f&response_type=token&scope=playlist-modify-public user-top-read&redirect_uri=https://lukewill18.github.io/Music-Finder/&show_dialog=true";
-        //window.location.href = "https://accounts.spotify.com/authorize?client_id=73df06c4d237418197bc43d50f729c0f&response_type=token&scope=playlist-modify-public user-top-read&redirect_uri=http://localhost:5500/&show_dialog=true";
+        //window.location.href = "https://accounts.spotify.com/authorize?client_id=73df06c4d237418197bc43d50f729c0f&response_type=token&scope=playlist-modify-public user-top-read&redirect_uri=https://lukewill18.github.io/Music-Finder/&show_dialog=true";
+        window.location.href = "https://accounts.spotify.com/authorize?client_id=73df06c4d237418197bc43d50f729c0f&response_type=token&scope=playlist-modify-public user-top-read&redirect_uri=http://localhost:5500/&show_dialog=true";
     });
 
     function clearStats() {
@@ -1301,7 +1309,10 @@ $(document).ready(function() {
             return artistRecs[b].match - artistRecs[a].match;
         });
         
+        console.log(artistRecs);
         for(let i = recOffset; i < recOrder.length && i < num_recs + recOffset; ++i) {
+            console.log(recOrder[i]);
+            console.log(artistRecs[recOrder[i]]);
             promises.push(getAdditionalArtistInfo(recOrder[i], token, artistRecs));
         }
         return new Promise(function(resolve, reject) {
@@ -1325,6 +1336,7 @@ $(document).ready(function() {
     
     function handleRecommendations() {
         first_recs_loading = true;
+        console.log(artistPrevalence);
         let artistRecPromise = collectArtistRecs(artistPrevalence, token, artistRecs);
         artistRecPromise.then(function() {
             first_recs_loading = false;
