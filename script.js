@@ -923,14 +923,15 @@ $(document).ready(function() {
     }
     
     function addPlaylistVisuals() {
-        let temp = ``;
+        playlistImageBox.find(".playlist-visual").remove(); // remove all pre-existing playlists 
+        let temp = ``   ;
         for(let i = 0; i < playlists.length; ++i) {
             temp += `<div class="playlist-visual" id="visual${i}">
                         <img class="playlist-img" src="${playlists[i].images[0].url}">
                         <p class="playlist-name">${playlists[i].name}</p>
                     </div>`;
         }
-        playlistImageBox.find(".loader").remove();
+        playlistImageBox.find(".loader").addClass("hidden");
         playlistImageBox.append(temp);
     }
 
@@ -1613,6 +1614,11 @@ $(document).ready(function() {
         window.open(playlistURL);
     });
 
+    finishPage.find("#go-again-btn").click(function() {
+        window.location.href = "#playlist-select";
+        collectAndDisplayPlaylists();
+    });
+
     function load_more_recs() {
         recs_loading = true;
         artistRecList.append(`<li class="new-loader"><div class="loader"></li>`);
@@ -1652,6 +1658,24 @@ $(document).ready(function() {
         }
     });
 
+
+    function collectAndDisplayPlaylists() {
+        playlistImageBox.find(".loader").removeClass("hidden");
+        let playlistPromise = collectAllPlaylists(token, playlists);        
+        playlistPromise.then(function(result) {
+            playlists = result.filter(function(p) {
+                return !p.name.includes("<script") && !p.name.includes("/script>") && p.tracks.total > 0;
+            });
+            handlePlaylistSelection();
+        });
+    }
+
+    playlistPage.find("#refresh-playlists").click(function() {
+        if(!playlists_loaded) return;
+        playlists_loaded = false;
+        collectAndDisplayPlaylists();
+    });
+    
     function switchToPlaylistPage(current) {
         switchPage(current, playlistPage, "#playlist-select");
 
@@ -1660,13 +1684,7 @@ $(document).ready(function() {
         input.val("");
         input.focus();
         if(!playlists_loaded) {
-            let playlistPromise = collectAllPlaylists(token, playlists);
-            playlistPromise.then(function(result) {
-                playlists = result.filter(function(p) {
-                    return !p.name.includes("<script") && !p.name.includes("/script>") && p.tracks.total > 0;
-                });
-                handlePlaylistSelection();
-            });
+            collectAndDisplayPlaylists();
         }
         else {
             let valid_playlists = [];

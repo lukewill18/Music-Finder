@@ -100,6 +100,12 @@ h1 {
     text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;
 }
 
+#refresh-playlists {
+    cursor: pointer;
+    margin-right: 5px;
+    font-size: 20px;
+}
+
 #use-most-listened-btn {
     margin-left: 10px;
     margin-top: 10px;
@@ -1184,5 +1190,17 @@ h1 {
     #generate-playlist-btn {
         width: 150px;
         height: 49px;
+    }
+}
+
+#playlist-link-btn, #go-again-btn {
+    vertical-align: middle;
+    margin-left: 5px;
+    margin-right: 5px;
+}
+
+@media screen and (max-width: 422px) {
+    #go-again-btn {
+        margin-top: 10px;
     }
 }
