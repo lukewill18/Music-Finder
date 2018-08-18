@@ -40,7 +40,7 @@ function collectAllPlaylists(token) {
             error: function(response) {
                 if(response.status == 401) {
                     window.location.hash = ""
-                    alert("Session Expired");
+                    showAlert("Session Expired");
                 }
                 else {
                     setTimeout(function() {
@@ -88,7 +88,7 @@ function makeTrackRequest(user, playlist, offset, token, tracks) {
             else {
                 if(thrown.response.status == 401) {
                     window.location.hash = "";
-                    alert("Session Expired");
+                    showAlert("Session Expired");
                 }
                 else {
                     setTimeout(function() {
@@ -226,7 +226,7 @@ function getSpotifyGenres(artists_with_id, artistPrevalence, promises, genrePrev
             else {
                 if(thrown.response.status == 401) {
                     window.location.hash = "";
-                    alert("Session Expired");
+                    showAlert("Session Expired");
                 }
                 else {
                     setTimeout(function() {
@@ -310,6 +310,21 @@ function filterDuplicateAlbums(albums) {
     return no_duplicates;
 }
 
+function setLastfmGenres(recs, artist) {
+    return new Promise(function(resolve, reject) {
+        $.ajax({
+            url: "https://ws.audioscrobbler.com/2.0/?method=artist.gettoptags&artist=" + artist + "&api_key=" + lastfm + "&format=json",
+            success: function(response) {
+                let tags = response.toptags.tag;
+                recs[artist].genres = tags.slice(0, 10).map(function(t) {
+                    return t.name;
+                });
+                resolve();
+            }
+        });
+    });
+}
+
 function setLastfmArt(recs, artist) {
     return new Promise(function(resolve, reject) {
         $.ajax({
@@ -343,7 +358,7 @@ function setAnyArt(spotify_id, token, recs, artist) {
             error: function(response) {
                 if(response.status == 401) {
                     window.location.hash = ""
-                    alert("Session Expired");
+                    showAlert("Session Expired");
                 }
                 else {
                     setTimeout(function() {
@@ -386,7 +401,7 @@ function setAlbumArt(spotify_id, token, recs, artist) {
             error: function(response) {
                 if(response.status == 401) {
                     window.location.hash = ""
-                    alert("Session Expired");
+                    showAlert("Session Expired");
                 }
                 else {
                     setTimeout(function() {
@@ -421,7 +436,7 @@ function setTopTrack(spotify_id, token, recs, artist) {
             error: function(response) {
                 if(response.status == 401) {
                     window.location.hash = ""
-                    alert("Session Expired");
+                    showAlert("Session Expired");
                 }
                 else {
                     setTimeout(function() {
@@ -470,13 +485,22 @@ function setIDAndGenres(searchname, token, recs, artist) {
 
                 let match = findMatchingArtist(response.artists.items, artist, searchname);
                 recs[artist].spotify_id = match.id;
-                recs[artist].genres = match.genres;
-                resolve(recs[artist].spotify_id);
+                if(match.genres.length > 0) 
+                {
+                    recs[artist].genres = match.genres;
+                    resolve(recs[artist].spotify_id);
+                }
+                else {
+                    let p = setLastfmGenres(recs, artist);
+                    p.then(function() {
+                        resolve(recs[artist].spotify_id);
+                    });
+                }
             },
             error: function(response) {
                 if(response.status == 401) {
                     window.location.hash = ""
-                    alert("Session Expired");
+                    showAlert("Session Expired");
                 }
                 else {
                     setTimeout(function() {
@@ -500,8 +524,10 @@ function getAdditionalArtistInfo(artist, token, recs) {
         });
         p1.then(function(spotify_id) {
             if(spotify_id == undefined) {
-                let p3_alt = setLastfmArt(recs, artist);
-                p3_alt.then(function() {
+                let alt_promises = [];
+                alt_promises.push(setLastfmGenres(recs, artist));
+                alt_promises.push(setLastfmArt(recs, artist));
+                Promise.all(alt_promises).then(function() {
                     resolve();
                 });
             }
@@ -565,7 +591,7 @@ function getSpotifyRecs(artist, artistPrevalence, token, recname, recs) {
             else {
                 if(thrown.response.status == 401) {
                     window.location.hash = "";
-                    alert("Session Expired");
+                    showAlert("Session Expired");
                 }
                 else {
                     setTimeout(function() {
@@ -689,7 +715,7 @@ function createEmptyPlaylist(user, token, playlistName, namesWithoutTrack) {
             error: function(response) {
                 if(response.status == 401) {
                     window.location.hash = ""
-                    alert("Session Expired");
+                    showAlert("Session Expired");
                 }
                 else {
                     setTimeout(function() {
@@ -726,7 +752,7 @@ function addTracksToPlaylist(trackids, playlist, user, token) {
                 error: function(response) {
                     if(response.status == 401) {
                         window.location.hash = ""
-                        alert("Session Expired");
+                        showAlert("Session Expired");
                     }
                     else {
                         setTimeout(function() {
@@ -840,6 +866,7 @@ $(document).ready(function() {
 
     function showAlert(alert, message) {
         showing_alert = true;
+        alert.text(message);
         anime({
             targets: '#alert',
             opacity: {
@@ -854,7 +881,6 @@ $(document).ready(function() {
         });
     
         //alert.css({"opacity": 1, "z-index": 1, "top": "5px"});
-        alert.text(message);
         setTimeout(function() {
             anime({
                 targets: '#alert',
@@ -1009,7 +1035,7 @@ $(document).ready(function() {
                 error: function(response) {
                     if(response.status == 401) {
                         window.location.hash = ""
-                        alert("Session Expired");
+                        showAlert("Session Expired");
                     }
                     else {
                         setTimeout(function() {
@@ -1035,7 +1061,7 @@ $(document).ready(function() {
                 error: function(response) {
                     if(response.status == 401) {
                         window.location.hash = ""
-                        alert("Session Expired");
+                        showAlert("Session Expired");
                     }
                     else {
                         setTimeout(function() {
@@ -1556,13 +1582,14 @@ $(document).ready(function() {
 
     recPage.find("#generate-playlist-btn").click(function() {
         if(!recs_loaded || generating_playlist) return;
-        generating_playlist = true;
-        let artistsToAdd = [];
         let checked = recPage.find(".rec-checkbox:checkbox:checked");
         if(checked.length == 0) {
+            console.log("none");
             showAlert(alert, "No artists selected. Please check boxes of the artists that you want to add to the playlist.");
             return;
         }
+        let artistsToAdd = [];
+        generating_playlist = true;
         for(let i = 0; i < checked.length; ++i) {
             let name = $(checked[i]).siblings(".rec-name").text();
             if(artistRecs.hasOwnProperty(name)) {
