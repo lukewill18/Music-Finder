@@ -315,6 +315,10 @@ function setLastfmGenres(recs, artist) {
         $.ajax({
             url: "https://ws.audioscrobbler.com/2.0/?method=artist.gettoptags&artist=" + artist + "&api_key=" + lastfm + "&format=json",
             success: function(response) {
+                if(response.hasOwnProperty("error")) {
+                    resolve();
+                    return;
+                }
                 let tags = response.toptags.tag;
                 recs[artist].genres = tags.slice(0, 10).map(function(t) {
                     return t.name;
@@ -331,7 +335,11 @@ function setLastfmArt(recs, artist) {
             url: "https://ws.audioscrobbler.com/2.0/?method=artist.gettopalbums&artist=" + artist + "&api_key=" + lastfm + "&format=json",
             success: function(response) {
                 let topalbum = response.topalbums.album[0];
-                let art = topalbum.image.length > 3 ? topalbum.image[3]["#text"] : "http://www.emoji.co.uk/files/microsoft-emojis/symbols-windows10/10176-white-question-mark-ornament.png";
+                let art;
+                if(topalbum == undefined || topalbum.image[3]["#text"] == "")
+                    art = "http://www.emoji.co.uk/files/microsoft-emojis/symbols-windows10/10176-white-question-mark-ornament.png";
+                else  
+                    art = topalbum.image[3]["#text"];
                 recs[artist].album_art.push(art);
                 resolve();
             }
@@ -616,7 +624,7 @@ function updateRecsLastfm(artist, artistPrevalence, lastfmrecs, recs) {
         }
         else {
             let images = lastfmrecs[i].image;
-            let pic = images.length > 4 ? images[4]["#text"] : "http://www.emoji.co.uk/files/microsoft-emojis/symbols-windows10/10176-white-question-mark-ornament.png";
+            let pic = images[4]["#text"] != "" ? images[4]["#text"] : "http://www.emoji.co.uk/files/microsoft-emojis/symbols-windows10/10176-white-question-mark-ornament.png";
             recs[recname] = { match: artistPrevalence[artist].count * lastfmrecs[i].match, 
                 similarTo: [{name: artistPrevalence[artist].display_name, similarity: lastfmrecs[i].match}], info_id: null,
                 art_id: null, image: pic, spotify_id: null, genres: [], top_track: null, album_art: []};
@@ -1660,6 +1668,7 @@ $(document).ready(function() {
 
 
     function collectAndDisplayPlaylists() {
+        playlists_generated = 0;
         playlistImageBox.find(".loader").removeClass("hidden");
         let playlistPromise = collectAllPlaylists(token, playlists);        
         playlistPromise.then(function(result) {
