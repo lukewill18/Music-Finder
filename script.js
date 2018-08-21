@@ -146,7 +146,6 @@ function getArtistImage(artist) {
         $.ajax({
             url: "https://ws.audioscrobbler.com/2.0/?method=artist.getinfo&artist=" + artist + "&api_key=" + lastfm + "&format=json",
             success: function(response) {
-
                 if(response.hasOwnProperty("error")) {
                     resolve("https://image.freepik.com/free-icon/question-mark_318-52837.jpg");
                     return;
@@ -334,6 +333,10 @@ function setLastfmArt(recs, artist) {
         $.ajax({
             url: "https://ws.audioscrobbler.com/2.0/?method=artist.gettopalbums&artist=" + artist + "&api_key=" + lastfm + "&format=json",
             success: function(response) {
+                if(response.hasOwnProperty("error")) {
+                    resolve();
+                    return;
+                }
                 let topalbum = response.topalbums.album[0];
                 let art;
                 if(topalbum == undefined || topalbum.image[3]["#text"] == "")
