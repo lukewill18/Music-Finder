@@ -334,6 +334,7 @@ function setLastfmArt(recs, artist) {
             url: "https://ws.audioscrobbler.com/2.0/?method=artist.gettopalbums&artist=" + artist + "&api_key=" + lastfm + "&format=json",
             success: function(response) {
                 if(response.hasOwnProperty("error")) {
+                    recs[artist].album_art.push("http://www.emoji.co.uk/files/microsoft-emojis/symbols-windows10/10176-white-question-mark-ornament.png");
                     resolve();
                     return;
                 }
@@ -493,7 +494,6 @@ function setIDAndGenres(searchname, token, recs, artist) {
                     resolve();
                     return;
                 }
-
                 let match = findMatchingArtist(response.artists.items, artist, searchname);
                 recs[artist].spotify_id = match.id;
                 if(match.genres.length > 0) 
@@ -1596,7 +1596,6 @@ $(document).ready(function() {
         if(!recs_loaded || generating_playlist) return;
         let checked = recPage.find(".rec-checkbox:checkbox:checked");
         if(checked.length == 0) {
-            console.log("none");
             showAlert(alert, "No artists selected. Please check boxes of the artists that you want to add to the playlist.");
             return;
         }
