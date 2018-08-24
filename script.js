@@ -27,7 +27,41 @@ function switchPage(toHide, toShow, new_page_name) {
     window.location.hash = new_page_name;
 }
 
-function collectAllPlaylists(token) {
+function showAlert(alert, message) {
+    showing_alert = true;
+    alert.text(message);
+    anime({
+        targets: '#alert',
+        opacity: {
+            value: 1,
+            duration: 700
+        },
+        top: {
+            value: "5px",
+            duration: 300
+        },
+        easing: "linear",
+    });
+
+    //alert.css({"opacity": 1, "z-index": 1, "top": "5px"});
+    setTimeout(function() {
+        anime({
+            targets: '#alert',
+            opacity: {
+                value: 0,
+                duration: 100
+            },
+            top: {
+                value: "-500px",
+                duration: 300
+            },
+            easing: "linear",
+        });
+        showing_alert = false;
+    }, 4500);
+}
+
+function collectAllPlaylists(token, alert) {
     return new Promise(function(resolve, reject) {
         $.ajax({
             url: "https://api.spotify.com/v1/me/playlists",
@@ -40,11 +74,11 @@ function collectAllPlaylists(token) {
             error: function(response) {
                 if(response.status == 401) {
                     window.location.hash = ""
-                    showAlert("Session Expired");
+                    showAlert(alert, "Session Expired");
                 }
                 else {
                     setTimeout(function() {
-                        let retry = collectAllPlaylists(token);
+                        let retry = collectAllPlaylists(token, alert);
                         retry.then(function(items) {
                             resolve(items);
                         });
@@ -65,7 +99,7 @@ function findPlaylistWithName(playlists, name) {
     return null;
 }
 
-function makeTrackRequest(user, playlist, offset, token, tracks) {
+function makeTrackRequest(user, playlist, offset, token, tracks, alert) {
     return new Promise(function(resolve, reject) {
         axios({
             url: "https://api.spotify.com/v1/users/" + user + "/playlists/" + playlist + "/tracks?offset=" + offset.toString(),
@@ -88,11 +122,11 @@ function makeTrackRequest(user, playlist, offset, token, tracks) {
             else {
                 if(thrown.response.status == 401) {
                     window.location.hash = "";
-                    showAlert("Session Expired");
+                    showAlert(alert, "Session Expired");
                 }
                 else {
                     setTimeout(function() {
-                        let retry = makeTrackRequest(user, playlist, offset, token, tracks);
+                        let retry = makeTrackRequest(user, playlist, offset, token, tracks, alert);
                         retry.then(function() {
                             resolve(tracks);
                         })
@@ -103,11 +137,11 @@ function makeTrackRequest(user, playlist, offset, token, tracks) {
     });
 }
 
-function collectAllTracks(user, playlist, token, tracks) { 
+function collectAllTracks(user, playlist, token, tracks, alert) { 
     let offset = 0;
     let promises = [];
     do {
-        promises.push(makeTrackRequest(user, playlist, offset, token, tracks));
+        promises.push(makeTrackRequest(user, playlist, offset, token, tracks, alert));
         offset += 100;
     }
     while(offset < totalTracks);
@@ -188,7 +222,7 @@ function getLastfmGenres(artist, genrePrevalence) { // used if artist is not in 
     });
 }
 
-function getSpotifyGenres(artists_with_id, artistPrevalence, promises, genrePrevalence, token) {
+function getSpotifyGenres(artists_with_id, artistPrevalence, promises, genrePrevalence, token, alert) {
     let artist_ids = artists_with_id.map(function(i) {
         return artistPrevalence[i].artist_id;
     }).join(",");
@@ -225,11 +259,11 @@ function getSpotifyGenres(artists_with_id, artistPrevalence, promises, genrePrev
             else {
                 if(thrown.response.status == 401) {
                     window.location.hash = "";
-                    showAlert("Session Expired");
+                    showAlert(alert, "Session Expired");
                 }
                 else {
                     setTimeout(function() {
-                        let retry = getSpotifyGenres(artists_with_id, artistPrevalence, promises, genrePrevalence, token);
+                        let retry = getSpotifyGenres(artists_with_id, artistPrevalence, promises, genrePrevalence, token, alert);
                         retry.then(function() {
                             resolve();
                         });
@@ -240,7 +274,7 @@ function getSpotifyGenres(artists_with_id, artistPrevalence, promises, genrePrev
     });
 }
 
-function getGenrePrevalence(artistPrevalence, token, genrePrevalence) {
+function getGenrePrevalence(artistPrevalence, token, genrePrevalence, alert) {
     let promises = [];
     let artists_with_id = Object.keys(artistPrevalence).filter(function(i) {
         return artistPrevalence[i].artist_id != null;
@@ -254,7 +288,7 @@ function getGenrePrevalence(artistPrevalence, token, genrePrevalence) {
     }
 
     for(let i = 0; i < artists_with_id.length; i += 50) { 
-        promises.push(getSpotifyGenres(artists_with_id.slice(i, i + 50), artistPrevalence, promises, genrePrevalence, token));
+        promises.push(getSpotifyGenres(artists_with_id.slice(i, i + 50), artistPrevalence, promises, genrePrevalence, token, alert));
     }
     return Promise.all(promises);
 }
@@ -351,7 +385,7 @@ function setLastfmArt(recs, artist) {
     });
 }
 
-function setAnyArt(spotify_id, token, recs, artist) {
+function setAnyArt(spotify_id, token, recs, artist, alert) {
     return new Promise(function(resolve, reject) {
         $.ajax({
             url: "https://api.spotify.com/v1/artists/" + spotify_id + "/albums",
@@ -370,11 +404,11 @@ function setAnyArt(spotify_id, token, recs, artist) {
             error: function(response) {
                 if(response.status == 401) {
                     window.location.hash = ""
-                    showAlert("Session Expired");
+                    showAlert(alert, "Session Expired");
                 }
                 else {
                     setTimeout(function() {
-                        let retry = setAnyArt(spotify_id, token, recs, artist);
+                        let retry = setAnyArt(spotify_id, token, recs, artist, alert);
                         retry.then(function() {
                             resolve();
                         });
@@ -385,7 +419,7 @@ function setAnyArt(spotify_id, token, recs, artist) {
     });
 }
 
-function setAlbumArt(spotify_id, token, recs, artist) {
+function setAlbumArt(spotify_id, token, recs, artist, alert) {
     return new Promise(function(resolve, reject) {
         $.ajax({
             url: "https://api.spotify.com/v1/artists/" + spotify_id + "/albums?include_groups=album&limit=50",
@@ -394,7 +428,7 @@ function setAlbumArt(spotify_id, token, recs, artist) {
             },
             success: function(response) {
                 if(response.items.length == 0) {
-                    let p = setAnyArt(spotify_id, token, recs, artist);
+                    let p = setAnyArt(spotify_id, token, recs, artist, alert);
                     p.then(function() {
                         resolve();
                     });
@@ -413,11 +447,11 @@ function setAlbumArt(spotify_id, token, recs, artist) {
             error: function(response) {
                 if(response.status == 401) {
                     window.location.hash = ""
-                    showAlert("Session Expired");
+                    showAlert(alert, "Session Expired");
                 }
                 else {
                     setTimeout(function() {
-                        let retry = setAlbumArt(spotify_id, token, recs, artist);
+                        let retry = setAlbumArt(spotify_id, token, recs, artist, alert);
                         retry.then(function() {
                             resolve();
                         });
@@ -428,7 +462,7 @@ function setAlbumArt(spotify_id, token, recs, artist) {
     });
 }
 
-function setTopTrack(spotify_id, token, recs, artist) {
+function setTopTrack(spotify_id, token, recs, artist, alert) {
     return new Promise(function(resolve, reject) {
         $.ajax({
             url: "https://api.spotify.com/v1/artists/" + spotify_id + "/top-tracks?country=US",
@@ -448,11 +482,11 @@ function setTopTrack(spotify_id, token, recs, artist) {
             error: function(response) {
                 if(response.status == 401) {
                     window.location.hash = ""
-                    showAlert("Session Expired");
+                    showAlert(alert, "Session Expired");
                 }
                 else {
                     setTimeout(function() {
-                        let retry = setTopTrack(spotify_id, token, recs, artist);
+                        let retry = setTopTrack(spotify_id, token, recs, artist, alert);
                         retry.then(function(sid) {
                             resolve(sid);
                         });
@@ -481,7 +515,7 @@ function findMatchingArtist(items, artist, searchname) {
     return match;
 }
 
-function setIDAndGenres(searchname, token, recs, artist) {
+function setIDAndGenres(searchname, token, recs, artist, alert) {
     return new Promise(function(resolve, reject) {
         $.ajax({
             url: "https://api.spotify.com/v1/search?q=" + searchname + "&type=artist&limit=20",
@@ -511,11 +545,11 @@ function setIDAndGenres(searchname, token, recs, artist) {
             error: function(response) {
                 if(response.status == 401) {
                     window.location.hash = ""
-                    showAlert("Session Expired");
+                    showAlert(alert, "Session Expired");
                 }
                 else {
                     setTimeout(function() {
-                        let retry = setIDAndGenres(searchname, token, recs, artist);
+                        let retry = setIDAndGenres(searchname, token, recs, artist, alert);
                         retry.then(function() {
                             resolve();
                         })
@@ -526,10 +560,10 @@ function setIDAndGenres(searchname, token, recs, artist) {
     });
 }
 
-function getAdditionalArtistInfo(artist, token, recs) { 
+function getAdditionalArtistInfo(artist, token, recs, alert) { 
     let searchname = artist.split(" ")[0].toLowerCase() == "the" ?  artist.slice(4) : artist;
     return new Promise(function(resolve, reject) {
-        let p1 = setIDAndGenres(searchname, token, recs, artist);
+        let p1 = setIDAndGenres(searchname, token, recs, artist, alert);
         p1.catch(function(msg) {
             reject(msg);
         });
@@ -543,7 +577,7 @@ function getAdditionalArtistInfo(artist, token, recs) {
                 });
             }
             else {
-                let p2 = setTopTrack(spotify_id, token, recs, artist);
+                let p2 = setTopTrack(spotify_id, token, recs, artist, alert);
                 p2.catch(function(msg) {
                     reject(msg);
                 });
@@ -552,7 +586,7 @@ function getAdditionalArtistInfo(artist, token, recs) {
                         resolve();
                     }
                     else {
-                        let p3 = setAlbumArt(spotify_id, token, recs, artist);
+                        let p3 = setAlbumArt(spotify_id, token, recs, artist, alert);
                         p3.catch(function(msg) {
                             reject(msg);
                         });
@@ -566,7 +600,7 @@ function getAdditionalArtistInfo(artist, token, recs) {
     });
 }
 
-function getSpotifyRecs(artist, artistPrevalence, token, recname, recs) {
+function getSpotifyRecs(artist, artistPrevalence, token, recname, recs, alert) {
     return new Promise(function(resolve, reject) {
         if(artistPrevalence[artist].artist_id == null) {
             resolve();
@@ -602,11 +636,11 @@ function getSpotifyRecs(artist, artistPrevalence, token, recname, recs) {
             else {
                 if(thrown.response.status == 401) {
                     window.location.hash = "";
-                    showAlert("Session Expired");
+                    showAlert(alert, "Session Expired");
                 }
                 else {
                     setTimeout(function() {
-                        let retry = getSpotifyRecs(artist, artistPrevalence, token, recname, recs);
+                        let retry = getSpotifyRecs(artist, artistPrevalence, token, recname, recs, alert);
                         retry.then(function() {
                             resolve();
                         });
@@ -635,7 +669,7 @@ function updateRecsLastfm(artist, artistPrevalence, lastfmrecs, recs) {
     }
 }
 
-function getLastfmRecs(artist, artistPrevalence, token, recname, recs, promises) {
+function getLastfmRecs(artist, artistPrevalence, token, recname, recs, promises, alert) {
     return new Promise(function(resolve, reject) {
         let cached = sessionStorage.getItem(artist);
         if(cached != null) {
@@ -650,7 +684,7 @@ function getLastfmRecs(artist, artistPrevalence, token, recname, recs, promises)
             }).then(function(response) {
                 response = response.data;
                 if(response.hasOwnProperty("error")) {
-                    promises.push(getSpotifyRecs(artist, artistPrevalence, token, recname, recs));
+                    promises.push(getSpotifyRecs(artist, artistPrevalence, token, recname, recs, alert));
                     resolve();
                 }
                 else {
@@ -679,12 +713,12 @@ function getLastfmRecs(artist, artistPrevalence, token, recname, recs, promises)
     });
 }
 
-function collectArtistRecs(artistPrevalence, token, recs) {
+function collectArtistRecs(artistPrevalence, token, recs, alert) {
     let recname;
     let promises = [];
     //console.time("recs");
     for(let artist in artistPrevalence) {
-        promises.push(getLastfmRecs(artist, artistPrevalence, token, recname, recs, promises));
+        promises.push(getLastfmRecs(artist, artistPrevalence, token, recname, recs, promises, alert));
     }
     return Promise.all(promises);
 }
@@ -700,7 +734,7 @@ function determineSimilarity(sim) {
         return "very-slight-match";      
 }
 
-function createEmptyPlaylist(user, token, playlistName, namesWithoutTrack) {
+function createEmptyPlaylist(user, token, playlistName, namesWithoutTrack, alert) {
     let desc = "Tracks from artists recommended by Music Finder";
     if(namesWithoutTrack.length > 0) {
         desc += ". The following artist(s) were not added because they could not be found on Spotify: " + namesWithoutTrack.join(", ");
@@ -726,11 +760,11 @@ function createEmptyPlaylist(user, token, playlistName, namesWithoutTrack) {
             error: function(response) {
                 if(response.status == 401) {
                     window.location.hash = ""
-                    showAlert("Session Expired");
+                    showAlert(alert, "Session Expired");
                 }
                 else {
                     setTimeout(function() {
-                        let retry = createEmptyPlaylist(user, token, playlistName, namesWithoutTrack);
+                        let retry = createEmptyPlaylist(user, token, playlistName, namesWithoutTrack, alert);
                         retry.then(function(p) {
                             resolve(p);
                         });
@@ -741,7 +775,7 @@ function createEmptyPlaylist(user, token, playlistName, namesWithoutTrack) {
     });
 }
 
-function addTracksToPlaylist(trackids, playlist, user, token) {
+function addTracksToPlaylist(trackids, playlist, user, token, alert) {
     let promises = [];
     for(let i = 0; i < trackids.length; i += 100) {
         let track_slice = trackids.slice(i, i + 100);
@@ -763,11 +797,11 @@ function addTracksToPlaylist(trackids, playlist, user, token) {
                 error: function(response) {
                     if(response.status == 401) {
                         window.location.hash = ""
-                        showAlert("Session Expired");
+                        showAlert(alert, "Session Expired");
                     }
                     else {
                         setTimeout(function() {
-                            let retry = addTracksToPlaylist(trackids, playlist, user, token);
+                            let retry = addTracksToPlaylist(trackids, playlist, user, token, alert);
                             retry.then(function() {
                                 resolve();
                             });
@@ -780,7 +814,7 @@ function addTracksToPlaylist(trackids, playlist, user, token) {
     return Promise.all(promises);
 }
 
-function generatePlaylist(artistsToAdd, user, token, playlistName, artistRecs) {
+function generatePlaylist(artistsToAdd, user, token, playlistName, artistRecs, alert) {
     let tracksToAdd = artistsToAdd.map(function(i) {
         return {name: i, track: artistRecs[i].top_track};
     });
@@ -799,11 +833,11 @@ function generatePlaylist(artistsToAdd, user, token, playlistName, artistRecs) {
         return obj.name;
     });
 
-    let p1 = createEmptyPlaylist(user, token, playlistName, namesWithoutTrack);
+    let p1 = createEmptyPlaylist(user, token, playlistName, namesWithoutTrack, alert);
     return new Promise(function(resolve, reject) {
         p1.then(function(resolve) {
             playlist = resolve;
-            return addTracksToPlaylist(trackIds, playlist.id, user, token);
+            return addTracksToPlaylist(trackIds, playlist.id, user, token, alert);
         }).then(function() {
             url = playlist.external_urls.spotify;
             resolve(url);
@@ -873,41 +907,6 @@ $(document).ready(function() {
     let showing_alert = false;
     let playlists_generated = 0;
     let generating_playlist = false;
-    
-
-    function showAlert(alert, message) {
-        showing_alert = true;
-        alert.text(message);
-        anime({
-            targets: '#alert',
-            opacity: {
-                value: 1,
-                duration: 700
-            },
-            top: {
-                value: "5px",
-                duration: 300
-            },
-            easing: "linear",
-        });
-    
-        //alert.css({"opacity": 1, "z-index": 1, "top": "5px"});
-        setTimeout(function() {
-            anime({
-                targets: '#alert',
-                opacity: {
-                    value: 0,
-                    duration: 100
-                },
-                top: {
-                    value: "-500px",
-                    duration: 300
-                },
-                easing: "linear",
-            });
-            showing_alert = false;
-        }, 4500);
-    }
 
     function filter_visuals(valid_playlists, search_phrase) {
         let toShow = [];
@@ -1036,7 +1035,7 @@ $(document).ready(function() {
         }
     });
 
-    function getMostListenedArtists(num_artists, time_range) {
+    function getMostListenedArtists(num_artists, time_range, alert) {
         return new Promise(function(resolve, reject) {
             $.ajax({
                 url: "https://api.spotify.com/v1/me/top/artists?limit=" + num_artists.toString() + "&time_range=" + time_range.id,
@@ -1047,11 +1046,11 @@ $(document).ready(function() {
                 error: function(response) {
                     if(response.status == 401) {
                         window.location.hash = ""
-                        showAlert("Session Expired");
+                        showAlert(alert, "Session Expired");
                     }
                     else {
                         setTimeout(function() {
-                            let retry = getMostListenedArtists(num_artists, time_range);
+                            let retry = getMostListenedArtists(num_artists, time_range, alert);
                             retry.then(function(items) {
                                 resolve(items);
                             });
@@ -1062,7 +1061,7 @@ $(document).ready(function() {
         });
     }
 
-    function getMostListenedUserID() {
+    function getMostListenedUserID(alert) {
         return new Promise(function(resolve, reject) {
             $.ajax({
                 url: "https://api.spotify.com/v1/me",
@@ -1073,11 +1072,11 @@ $(document).ready(function() {
                 error: function(response) {
                     if(response.status == 401) {
                         window.location.hash = ""
-                        showAlert("Session Expired");
+                        showAlert(alert, "Session Expired");
                     }
                     else {
                         setTimeout(function() {
-                            let retry = getMostListenedUserID();
+                            let retry = getMostListenedUserID(alert);
                             retry.then(function(id) {
                                 resolve(id);
                             });
@@ -1094,8 +1093,8 @@ $(document).ready(function() {
         recs_loaded = false;
         visited_recs_page = false;
         let promises = [];
-        promises.push(getMostListenedUserID());
-        promises.push(getMostListenedArtists(num_artists, time_range));
+        promises.push(getMostListenedUserID(alert));
+        promises.push(getMostListenedArtists(num_artists, time_range, alert));
         Promise.all(promises).then(function(resolves) {
             user = resolves[0];
             most_listened = resolves[1];
@@ -1107,12 +1106,12 @@ $(document).ready(function() {
         e.preventDefault();
         let checked = $(this).find("input:checked");
         if(checked.length == 0) {
-            showAlert("Please select a Time Range");
+            showAlert(alert, "Please select a Time Range");
             return;
         }
         let num_artists = $(this).find("#num-artists").val();
         if(num_artists == "" || num_artists < 1 || num_artists > 50) {
-            showAlert("Please enter a valid number of artists (between 1 and 50)")
+            showAlert(alert, "Please enter a valid number of artists (between 1 and 50)")
             return;
         }
         hideMostListenedModal();
@@ -1407,7 +1406,7 @@ $(document).ready(function() {
         });
         
         for(let i = recOffset; i < recOrder.length && i < num_recs + recOffset; ++i) {
-            promises.push(getAdditionalArtistInfo(recOrder[i], token, artistRecs));
+            promises.push(getAdditionalArtistInfo(recOrder[i], token, artistRecs, alert));
         }
         return new Promise(function(resolve, reject) {
             let all = Promise.all(promises);
@@ -1430,7 +1429,7 @@ $(document).ready(function() {
     
     function handleRecommendations() {
         first_recs_loading = true;
-        let artistRecPromise = collectArtistRecs(artistPrevalence, token, artistRecs);
+        let artistRecPromise = collectArtistRecs(artistPrevalence, token, artistRecs, alert);
         artistRecPromise.then(function() {
             first_recs_loading = false;
             let insertPromise = insertArtistRecs(artistRecs, token, 30);
@@ -1608,7 +1607,7 @@ $(document).ready(function() {
             }
         }
         let playlistName = generatePlaylistName(playlists);
-        let urlPromise = generatePlaylist(artistsToAdd, user, token, playlistName, artistRecs);
+        let urlPromise = generatePlaylist(artistsToAdd, user, token, playlistName, artistRecs, alert);
         urlPromise.then(function(url) {
             playlistURL = url;
             switchPage(recPage, $("#finish-page"), "#finish");
@@ -1672,7 +1671,7 @@ $(document).ready(function() {
     function collectAndDisplayPlaylists() {
         playlists_generated = 0;
         playlistImageBox.find(".loader").removeClass("hidden");
-        let playlistPromise = collectAllPlaylists(token, playlists);        
+        let playlistPromise = collectAllPlaylists(token, alert);        
         playlistPromise.then(function(result) {
             playlists = result.filter(function(p) {
                 return !p.name.includes("<script") && !p.name.includes("/script>") && p.tracks.total > 0;
@@ -1728,7 +1727,7 @@ $(document).ready(function() {
             topGenresHeader.text("Your Playlist's Top Genres");
             stats_headers_changed = false;
         }
-        let trackPromise = collectAllTracks(user, playlist.id, token, tracks);
+        let trackPromise = collectAllTracks(user, playlist.id, token, tracks, alert);
         trackPromise.then(function(track_blocks) {
             for(let i = 0; i < track_blocks.length; ++i) {
                 tracks = tracks.concat(track_blocks[i]);
@@ -1739,7 +1738,7 @@ $(document).ready(function() {
             artistPrevalence = getArtistPrevalence(tracks);
             //console.log(artistPrevalence);                
             insertTopArtists(tracks.length);
-            let genrePromise = getGenrePrevalence(artistPrevalence, token, genrePrevalence);
+            let genrePromise = getGenrePrevalence(artistPrevalence, token, genrePrevalence, alert);
             genrePromise.then(function() {
                 insertTopGenres(tracks.length);
                 stats_loaded = true;
@@ -1764,7 +1763,7 @@ $(document).ready(function() {
         let art_promises = [];
         let all_images = [];
         for(let i = 0; i < artists.length; ++i) {
-            art_promises.push(setAlbumArt(artistPrevalence[artists[i]].artist_id, token, artistPrevalence, artists[i]));
+            art_promises.push(setAlbumArt(artistPrevalence[artists[i]].artist_id, token, artistPrevalence, artists[i], alert));
         }
         Promise.all(art_promises).then(function() {
             for(let i = 0; i < artists.length; ++i) {
@@ -1774,7 +1773,7 @@ $(document).ready(function() {
         });
 
         insertTopArtists(most_listened.length);
-        let genrePromise = getGenrePrevalence(artistPrevalence, token, genrePrevalence);
+        let genrePromise = getGenrePrevalence(artistPrevalence, token, genrePrevalence, alert);
             genrePromise.then(function() {
                 insertTopGenres(most_listened.length);
                 stats_loaded = true;
