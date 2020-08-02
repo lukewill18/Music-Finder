@@ -85,6 +85,16 @@ function getArtistImage(artist_id, token) {
             success: function(response) {
                 let img = response["images"][0] != undefined ? response["images"][0]["url"] : "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png";
                 resolve(img);
+            },
+            error: function(response) {
+                if(response.status == 429) {
+                    setTimeout(function() {
+                        let retry = getArtistImage(artist_id, token);
+                        retry.then(function(img) {
+                            resolve(img);
+                        })
+                    }, 3000);  
+                }
             }
         });
     });
