@@ -70,16 +70,20 @@ function makeTrackRequest(user, playlist, offset, token, tracks, alert) {
     });
 }
 
-function getArtistImage(artist) {
+function getArtistImage(artist_id, token) {
+    if(artist_id == null) {
+        return new Promise( function(resolve, reject) {
+            resolve("https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png");
+        });
+    }
     return new Promise(function(resolve, reject) {
         $.ajax({
-            url: "https://ws.audioscrobbler.com/2.0/?method=artist.getinfo&artist=" + artist + "&api_key=" + lastfm + "&format=json",
+            url: "https://api.spotify.com/v1/artists/" + artist_id,
+            headers: {
+                'Authorization': 'Bearer ' + token,
+            },
             success: function(response) {
-                if(response.hasOwnProperty("error")) {
-                    resolve("https://image.freepik.com/free-icon/question-mark_318-52837.jpg");
-                    return;
-                } 
-                let img = response.artist.image.length > 4 ? response.artist.image[4]["#text"] : "https://image.freepik.com/free-icon/question-mark_318-52837.jpg";
+                let img = response["images"][0] != undefined ? response["images"][0]["url"] : "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png";
                 resolve(img);
             }
         });
@@ -303,6 +307,18 @@ function setAlbumArt(spotify_id, token, recs, artist, alert) {
             }
         });
     });
+}
+
+function setArtistImage(spotify_id, token, recs, artist, alert) {
+    return new Promise(function(resolve, reject) {
+        getArtistImage(spotify_id, token).then(function(img) {
+            if(img != undefined) {
+                recs[artist].image = img;
+            }
+            resolve();
+        });
+    });
+    
 }
 
 function getMostPopularTopTracks(tracks, mostPopular) {
